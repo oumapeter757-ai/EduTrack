@@ -1,0 +1,45 @@
+spring:
+  application:
+    name: EduTrack
+  profiles:
+    active:
+      - dev
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
+        jdbc:
+          batch_size: 25
+        order_updates: true
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+  web:
+    error:
+      include-message: never
+      include-binding-errors: never
+
+server:
+  port: 8080
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: when-authorized
+
+application:
+  security:
+    jwt:
+
+      secret-key: ${JWT_SECRET_KEY}
+
+      expiration: 86400000

@@ -1,0 +1,1 @@
+ALTER TABLE users MODIFY COLUMN school_id BIGINT NULL;
