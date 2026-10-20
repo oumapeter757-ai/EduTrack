@@ -1,6 +1,10 @@
 package com.peterscode.edutrack.security.jwt;
 
+import com.peterscode.edutrack.security.UserPrincipal;
 import com.peterscode.edutrack.security.service.CustomUserDetailsService;
+import com.peterscode.edutrack.security.ModuleAccessService;
+import com.peterscode.edutrack.user.entity.Role;
+import io.jsonwebtoken.ExpiredJwtException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -22,6 +26,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
     private final CustomUserDetailsService userDetailsService;
+    private final ModuleAccessService moduleAccessService;
 
     @Override
     protected void doFilterInternal(
@@ -52,7 +57,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 UserDetails userDetails = this.userDetailsService.loadUserByUsername(userEmail);
 
                 // 4. Validate token against the database record
-                if (jwtService.isTokenValid(jwt, userDetails)) {
+                if (jwtService.isTokenValid(jwt, userDetails)
+                        && userDetails.isEnabled()
+                        && userDetails.isAccountNonLocked()
+                        && (userDetails instanceof UserPrincipal p
+                        && (p.getRole() == Role.SUPER_ADMIN || moduleAccessService.isSchoolActive(p.getSchoolId())))) {
                     UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
                             userDetails,
                             null,
@@ -65,10 +74,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     SecurityContextHolder.getContext().setAuthentication(authToken);
                 }
             }
+        } catch (ExpiredJwtException ex) {
+            logger.debug("Expired JWT rejected");
         } catch (Exception ex) {
-            // If token validation fails (expired, malformed, etc.), we simply don't set the authentication.
-            // The SecurityFilterChain will handle rejecting the request later.
-            logger.error("Could not set user authentication in security context", ex);
+            logger.debug("Invalid JWT rejected: " + ex.getMessage());
         }
 
         // 6. Continue the filter chain

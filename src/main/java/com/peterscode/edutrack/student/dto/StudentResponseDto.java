@@ -19,6 +19,9 @@ public class StudentResponseDto {
 
     private Long id;
     private Long schoolId;
+    private Long classLevelId;
+    private Long streamId;
+    private Long academicYearId;
     private Long userId;
     private String admissionNumber;
     private String firstName;

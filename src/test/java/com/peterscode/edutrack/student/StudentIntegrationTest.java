@@ -110,6 +110,8 @@ class StudentIntegrationTest {
                 .currency("USD")
                 .subscriptionTier(SubscriptionTier.STANDARD)
                 .subscriptionStatus(SubscriptionStatus.ACTIVE)
+                .subscriptionStartDate(LocalDate.now().minusDays(1))
+                .subscriptionEndDate(LocalDate.now().plusDays(30))
                 .enabledModules(new HashSet<>(Set.of(ServiceModule.STUDENT_MANAGEMENT, ServiceModule.ATTENDANCE, ServiceModule.GRADING)))
                 .maxStudents(100)
                 .active(true)
@@ -129,6 +131,8 @@ class StudentIntegrationTest {
                 .currency("USD")
                 .subscriptionTier(SubscriptionTier.STANDARD)
                 .subscriptionStatus(SubscriptionStatus.ACTIVE)
+                .subscriptionStartDate(LocalDate.now().minusDays(1))
+                .subscriptionEndDate(LocalDate.now().plusDays(30))
                 .enabledModules(new HashSet<>(Set.of(ServiceModule.STUDENT_MANAGEMENT)))
                 .maxStudents(50)
                 .active(true)
@@ -309,7 +313,7 @@ class StudentIntegrationTest {
     }
 
     @Test
-    @DisplayName("Exceeding school max students quota returns 400 Bad Request")
+    @DisplayName("Exceeding school max students quota returns conflict")
     void exceedingMaxCapacityReturnsBadRequest() throws Exception {
         savedSchool1.setMaxStudents(1);
         schoolRepository.save(savedSchool1); // Already 1 active student in School 1
@@ -324,8 +328,8 @@ class StudentIntegrationTest {
                         .with(user(schoolAdminPrincipal1))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.containsString("maximum student capacity")));
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.errorCode").value("LIMIT_REACHED"));
     }
 
     @Test
@@ -364,7 +368,7 @@ class StudentIntegrationTest {
     void schoolAdminCannotAccessOtherSchoolStudent() throws Exception {
         mockMvc.perform(get("/api/v1/students/" + savedStudent2.getId())
                         .with(user(schoolAdminPrincipal1)))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isNotFound());
     }
 
     @Test
@@ -382,7 +386,7 @@ class StudentIntegrationTest {
     void studentCannotViewOtherStudentProfile() throws Exception {
         mockMvc.perform(get("/api/v1/students/" + savedStudent2.getId())
                         .with(user(studentUserPrincipal1)))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isNotFound());
     }
 
     @Test

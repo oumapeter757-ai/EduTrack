@@ -15,8 +15,15 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import com.peterscode.edutrack.school.repository.SchoolRepository;
+import com.peterscode.edutrack.security.AuthRateLimiter;
+import com.peterscode.edutrack.security.PlanGuard;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.Query;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.test.util.ReflectionTestUtils;
 
+import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -32,6 +39,18 @@ class UserRegistrationServiceTest {
 
     @Mock
     private PasswordEncoder passwordEncoder;
+
+    @Mock
+    private SchoolRepository schoolRepository;
+
+    @Mock
+    private PlanGuard planGuard;
+
+    @Mock
+    private EntityManager entityManager;
+
+    @Mock
+    private AuthRateLimiter rateLimiter;
 
     @InjectMocks
     private UserRegistrationService userRegistrationService;
@@ -66,16 +85,22 @@ class UserRegistrationServiceTest {
                 .active(true)
                 .build();
         schoolAdminPrincipal = UserPrincipal.create(schoolAdminUser);
+
+        ReflectionTestUtils.setField(userRegistrationService, "bootstrapToken", "test-token");
     }
 
     @Test
     @DisplayName("signupInitialSuperAdmin succeeds when no super admin exists in the system")
     void signupInitialSuperAdmin_WhenNoSuperAdminExists_ShouldSucceed() {
+        Query query = mock(Query.class);
+        when(entityManager.createNativeQuery(anyString())).thenReturn(query);
+        when(query.getResultList()).thenReturn(List.of(1L));
+
         when(userRepository.existsByRole(Role.SUPER_ADMIN)).thenReturn(false);
         when(userRepository.existsByUsername("superadmin")).thenReturn(false);
         when(userRepository.existsByEmail("superadmin@example.com")).thenReturn(false);
         when(passwordEncoder.encode("Secret123!")).thenReturn("encodedPassword");
-        when(userRepository.save(any(User.class))).thenAnswer(invocation -> {
+        when(userRepository.saveAndFlush(any(User.class))).thenAnswer(invocation -> {
             User user = invocation.getArgument(0);
             return User.builder()
                     .schoolId(user.getSchoolId())
@@ -89,29 +114,33 @@ class UserRegistrationServiceTest {
                     .build();
         });
 
-        UserResponseDto response = userRegistrationService.signupInitialSuperAdmin(superAdminRequest);
+        UserResponseDto response = userRegistrationService.signupInitialSuperAdmin(superAdminRequest, "test-token");
 
         assertThat(response).isNotNull();
         assertThat(response.getUsername()).isEqualTo("superadmin");
         assertThat(response.getEmail()).isEqualTo("superadmin@example.com");
         assertThat(response.getRole()).isEqualTo(Role.SUPER_ADMIN);
-        assertThat(response.getSchoolId()).isEqualTo(0L);
+        assertThat(response.getSchoolId()).isNull();
 
         verify(userRepository).existsByRole(Role.SUPER_ADMIN);
-        verify(userRepository).save(any(User.class));
+        verify(userRepository).saveAndFlush(any(User.class));
     }
 
     @Test
     @DisplayName("signupInitialSuperAdmin throws UnauthorizedOperationException when super admin already exists")
     void signupInitialSuperAdmin_WhenSuperAdminAlreadyExists_ShouldThrowUnauthorizedOperationException() {
+        Query query = mock(Query.class);
+        when(entityManager.createNativeQuery(anyString())).thenReturn(query);
+        when(query.getResultList()).thenReturn(List.of(1L));
+
         when(userRepository.existsByRole(Role.SUPER_ADMIN)).thenReturn(true);
 
-        assertThatThrownBy(() -> userRegistrationService.signupInitialSuperAdmin(superAdminRequest))
+        assertThatThrownBy(() -> userRegistrationService.signupInitialSuperAdmin(superAdminRequest, "test-token"))
                 .isInstanceOf(UnauthorizedOperationException.class)
                 .hasMessageContaining("Registration is disabled. A Super Admin already exists");
 
         verify(userRepository).existsByRole(Role.SUPER_ADMIN);
-        verify(userRepository, never()).save(any());
+        verify(userRepository, never()).saveAndFlush(any());
     }
 
     @Test
@@ -120,7 +149,7 @@ class UserRegistrationServiceTest {
         when(userRepository.existsByUsername("superadmin")).thenReturn(false);
         when(userRepository.existsByEmail("superadmin@example.com")).thenReturn(false);
         when(passwordEncoder.encode("Secret123!")).thenReturn("encodedPassword");
-        when(userRepository.save(any(User.class))).thenAnswer(invocation -> {
+        when(userRepository.saveAndFlush(any(User.class))).thenAnswer(invocation -> {
             User user = invocation.getArgument(0);
             return User.builder()
                     .schoolId(user.getSchoolId())
@@ -138,8 +167,8 @@ class UserRegistrationServiceTest {
 
         assertThat(response).isNotNull();
         assertThat(response.getRole()).isEqualTo(Role.SUPER_ADMIN);
-        assertThat(response.getSchoolId()).isEqualTo(0L);
-        verify(userRepository).save(any(User.class));
+        assertThat(response.getSchoolId()).isNull();
+        verify(userRepository).saveAndFlush(any(User.class));
     }
 
     @Test

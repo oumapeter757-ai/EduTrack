@@ -3,6 +3,7 @@ package com.peterscode.edutrack.student.dto;
 import com.peterscode.edutrack.student.enums.BloodGroup;
 import com.peterscode.edutrack.student.enums.Gender;
 import com.peterscode.edutrack.student.enums.StudentStatus;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Past;
@@ -18,9 +19,13 @@ import java.time.LocalDate;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
+@JsonIgnoreProperties(ignoreUnknown = false)
 public class CreateStudentRequestDto {
 
     private Long schoolId;
+    private Long classLevelId;
+    private Long streamId;
+    private Long academicYearId;
 
     private Long userId;
 
@@ -112,5 +117,6 @@ public class CreateStudentRequestDto {
     @Size(max = 50, message = "Guardian relationship cannot exceed 50 characters")
     private String guardianRelationship;
 
+    @Size(max = 5000, message = "Medical notes cannot exceed 5000 characters")
     private String medicalNotes;
 }

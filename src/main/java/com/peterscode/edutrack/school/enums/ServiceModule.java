@@ -42,4 +42,17 @@ public enum ServiceModule {
             case ENTERPRISE -> EnumSet.allOf(ServiceModule.class);
         };
     }
+
+    /**
+     * Module prerequisite dependency mapping.
+     */
+    public static java.util.Map<ServiceModule, Set<ServiceModule>> getDependencies() {
+        return java.util.Map.of(
+                ATTENDANCE, EnumSet.of(STUDENT_MANAGEMENT, TEACHER_MANAGEMENT),
+                GRADING, EnumSet.of(STUDENT_MANAGEMENT),
+                EXAMINATION, EnumSet.of(STUDENT_MANAGEMENT),
+                TIMETABLE, EnumSet.of(TEACHER_MANAGEMENT),
+                REPORTS, EnumSet.of(STUDENT_MANAGEMENT, TEACHER_MANAGEMENT)
+        );
+    }
 }

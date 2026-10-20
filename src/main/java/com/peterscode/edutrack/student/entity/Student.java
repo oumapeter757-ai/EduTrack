@@ -14,7 +14,9 @@ import java.time.LocalDate;
 @Table(
         name = "students",
         uniqueConstraints = {
-                @UniqueConstraint(name = "uk_student_school_admission", columnNames = {"school_id", "admission_number"})
+                @UniqueConstraint(name = "uk_student_school_admission", columnNames = {"school_id", "admission_number"}),
+                @UniqueConstraint(name = "uk_student_user_id", columnNames = "user_id"),
+                @UniqueConstraint(name = "uk_student_school_email", columnNames = {"school_id", "email"})
         },
         indexes = {
                 @Index(name = "idx_student_school_grade", columnList = "school_id, grade_level"),
@@ -31,6 +33,15 @@ public class Student extends BaseEntity {
 
     @Column(name = "school_id", nullable = false)
     private Long schoolId;
+
+    @Column(name = "class_level_id")
+    private Long classLevelId;
+
+    @Column(name = "stream_id")
+    private Long streamId;
+
+    @Column(name = "academic_year_id")
+    private Long academicYearId;
 
     @Column(name = "user_id")
     private Long userId;
@@ -131,8 +142,18 @@ public class Student extends BaseEntity {
     private String medicalNotes;
 
     @Column(name = "active", nullable = false)
+    @Setter(AccessLevel.NONE)
     @Builder.Default
     private boolean active = true;
+
+    public void setStatus(StudentStatus status) {
+        this.status = status;
+        this.active = status == StudentStatus.ACTIVE;
+    }
+
+    void setActive(boolean active) {
+        this.active = active;
+    }
 
     /**
      * Returns full formatted name.
@@ -169,6 +190,6 @@ public class Student extends BaseEntity {
      * Checks if student is currently actively enrolled.
      */
     public boolean isEnrolled() {
-        return active && status == StudentStatus.ACTIVE;
+        return status == StudentStatus.ACTIVE;
     }
 }

@@ -14,6 +14,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import com.peterscode.edutrack.security.NoModuleRequired;
+import com.peterscode.edutrack.security.RequiresActiveSchool;
 
 /**
  * Controller for hierarchical user creation.
@@ -30,6 +32,8 @@ import org.springframework.web.bind.annotation.*;
  * </ul>
  */
 @RestController
+@NoModuleRequired
+@RequiresActiveSchool
 @RequestMapping("/api/v1/admin")
 @RequiredArgsConstructor
 public class UserManagementController {

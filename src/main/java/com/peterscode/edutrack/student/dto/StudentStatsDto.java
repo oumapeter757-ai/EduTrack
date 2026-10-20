@@ -24,5 +24,6 @@ public class StudentStatsDto {
     private Double capacityUtilizationPercentage;
     private Map<StudentStatus, Long> statusCounts;
     private Map<String, Long> gradeLevelCounts;
+    private Map<Long, Long> classLevelCounts;
     private Map<Gender, Long> genderCounts;
 }

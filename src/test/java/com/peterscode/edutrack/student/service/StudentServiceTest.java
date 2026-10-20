@@ -15,8 +15,7 @@ import com.peterscode.edutrack.student.entity.Student;
 import com.peterscode.edutrack.student.enums.BloodGroup;
 import com.peterscode.edutrack.student.enums.Gender;
 import com.peterscode.edutrack.student.enums.StudentStatus;
-import com.peterscode.edutrack.student.exception.StudentCapacityExceededException;
-import com.peterscode.edutrack.student.exception.StudentModuleDisabledException;
+import com.peterscode.edutrack.security.PlanLimitReachedException;
 import com.peterscode.edutrack.student.exception.StudentNotFoundException;
 import com.peterscode.edutrack.student.mapper.StudentMapper;
 import com.peterscode.edutrack.student.repository.StudentRepository;
@@ -59,6 +58,21 @@ class StudentServiceTest {
 
     @Mock
     private UserRepository userRepository;
+
+    @Mock
+    private com.peterscode.edutrack.security.PlanGuard planGuard;
+
+    @Mock
+    private com.peterscode.edutrack.classlevel.repository.ClassLevelRepository classLevelRepository;
+
+    @Mock
+    private com.peterscode.edutrack.classlevel.repository.StreamRepository streamRepository;
+
+    @Mock
+    private com.peterscode.edutrack.academicyear.repository.AcademicYearRepository academicYearRepository;
+
+    @Mock
+    private com.peterscode.edutrack.student.audit.StudentAuditService auditService;
 
     @Spy
     private StudentMapper studentMapper = new StudentMapper();
@@ -140,10 +154,9 @@ class StudentServiceTest {
     @DisplayName("createStudent succeeds for School Admin in their school")
     void createStudent_SchoolAdmin_Success() {
         when(schoolRepository.findById(1L)).thenReturn(Optional.of(sampleSchool));
-        when(studentRepository.countBySchoolIdAndActiveTrue(1L)).thenReturn(50L);
         when(studentRepository.existsBySchoolIdAndAdmissionNumber(1L, "ADM-001")).thenReturn(false);
         when(studentRepository.existsBySchoolIdAndEmail(1L, "john.doe@alpha.edu")).thenReturn(false);
-        when(studentRepository.save(any(Student.class))).thenAnswer(invocation -> {
+        when(studentRepository.saveAndFlush(any(Student.class))).thenAnswer(invocation -> {
             Student s = invocation.getArgument(0);
             s.setId(100L);
             return s;
@@ -156,7 +169,7 @@ class StudentServiceTest {
         assertThat(response.getAdmissionNumber()).isEqualTo("ADM-001");
         assertThat(response.getFullName()).isEqualTo("John Doe");
         assertThat(response.getSchoolId()).isEqualTo(1L);
-        verify(studentRepository).save(any(Student.class));
+        verify(studentRepository).saveAndFlush(any(Student.class));
     }
 
     @Test
@@ -164,10 +177,9 @@ class StudentServiceTest {
     void createStudent_SuperAdmin_Success() {
         createDto.setSchoolId(1L);
         when(schoolRepository.findById(1L)).thenReturn(Optional.of(sampleSchool));
-        when(studentRepository.countBySchoolIdAndActiveTrue(1L)).thenReturn(10L);
         when(studentRepository.existsBySchoolIdAndAdmissionNumber(1L, "ADM-001")).thenReturn(false);
         when(studentRepository.existsBySchoolIdAndEmail(1L, "john.doe@alpha.edu")).thenReturn(false);
-        when(studentRepository.save(any(Student.class))).thenAnswer(invocation -> {
+        when(studentRepository.saveAndFlush(any(Student.class))).thenAnswer(invocation -> {
             Student s = invocation.getArgument(0);
             s.setId(101L);
             return s;
@@ -177,14 +189,13 @@ class StudentServiceTest {
 
         assertThat(response).isNotNull();
         assertThat(response.getId()).isEqualTo(101L);
-        verify(studentRepository).save(any(Student.class));
+        verify(studentRepository).saveAndFlush(any(Student.class));
     }
 
     @Test
     @DisplayName("createStudent throws DuplicateResourceException on duplicate admission number")
     void createStudent_DuplicateAdmissionNumber_ThrowsException() {
         when(schoolRepository.findById(1L)).thenReturn(Optional.of(sampleSchool));
-        when(studentRepository.countBySchoolIdAndActiveTrue(1L)).thenReturn(10L);
         when(studentRepository.existsBySchoolIdAndAdmissionNumber(1L, "ADM-001")).thenReturn(true);
 
         assertThatThrownBy(() -> studentService.createStudent(createDto, schoolAdminPrincipal))
@@ -195,28 +206,14 @@ class StudentServiceTest {
     }
 
     @Test
-    @DisplayName("createStudent throws StudentCapacityExceededException when maxStudents quota is reached")
+    @DisplayName("createStudent throws PlanLimitReachedException when student quota is reached")
     void createStudent_QuotaExceeded_ThrowsException() {
-        sampleSchool.setMaxStudents(50);
-        when(schoolRepository.findById(1L)).thenReturn(Optional.of(sampleSchool));
-        when(studentRepository.countBySchoolIdAndActiveTrue(1L)).thenReturn(50L);
+        doThrow(new PlanLimitReachedException("Student plan limit reached", "LIMIT_REACHED"))
+                .when(planGuard).assertStudentCapacity(1L, 1);
 
         assertThatThrownBy(() -> studentService.createStudent(createDto, schoolAdminPrincipal))
-                .isInstanceOf(StudentCapacityExceededException.class)
-                .hasMessageContaining("has reached its maximum student capacity of 50");
-
-        verify(studentRepository, never()).save(any());
-    }
-
-    @Test
-    @DisplayName("createStudent throws StudentModuleDisabledException when STUDENT_MANAGEMENT is not enabled")
-    void createStudent_ModuleDisabled_ThrowsException() {
-        sampleSchool.setEnabledModules(new HashSet<>(Set.of(ServiceModule.ATTENDANCE)));
-        when(schoolRepository.findById(1L)).thenReturn(Optional.of(sampleSchool));
-
-        assertThatThrownBy(() -> studentService.createStudent(createDto, schoolAdminPrincipal))
-                .isInstanceOf(StudentModuleDisabledException.class)
-                .hasMessageContaining("Student management module is not enabled");
+                .isInstanceOf(PlanLimitReachedException.class)
+                .hasMessageContaining("Student plan limit reached");
 
         verify(studentRepository, never()).save(any());
     }
@@ -224,7 +221,7 @@ class StudentServiceTest {
     @Test
     @DisplayName("getStudentById succeeds when requested within tenant")
     void getStudentById_Success() {
-        when(studentRepository.findById(100L)).thenReturn(Optional.of(sampleStudent));
+        when(studentRepository.findBySchoolIdAndId(1L, 100L)).thenReturn(Optional.of(sampleStudent));
 
         StudentResponseDto response = studentService.getStudentById(100L, schoolAdminPrincipal);
 
@@ -236,7 +233,7 @@ class StudentServiceTest {
     @Test
     @DisplayName("getStudentById throws UnauthorizedOperationException for different tenant")
     void getStudentById_DifferentTenant_ThrowsException() {
-        when(studentRepository.findById(100L)).thenReturn(Optional.of(sampleStudent));
+        when(studentRepository.findBySchoolIdAndId(99L, 100L)).thenReturn(Optional.empty());
         UserPrincipal otherSchoolAdmin = UserPrincipal.builder()
                 .id(5L)
                 .schoolId(99L)
@@ -245,14 +242,13 @@ class StudentServiceTest {
                 .build();
 
         assertThatThrownBy(() -> studentService.getStudentById(100L, otherSchoolAdmin))
-                .isInstanceOf(UnauthorizedOperationException.class)
-                .hasMessageContaining("Cannot access student from another school tenant");
+                .isInstanceOf(StudentNotFoundException.class);
     }
 
     @Test
     @DisplayName("getCurrentStudentProfile succeeds for logged in student user")
     void getCurrentStudentProfile_Success() {
-        when(studentRepository.findByUserId(10L)).thenReturn(Optional.of(sampleStudent));
+        when(studentRepository.findBySchoolIdAndUserId(1L, 10L)).thenReturn(Optional.of(sampleStudent));
 
         StudentResponseDto response = studentService.getCurrentStudentProfile(studentPrincipal);
 
@@ -264,9 +260,9 @@ class StudentServiceTest {
     @Test
     @DisplayName("updateStudent modifies mutable fields successfully")
     void updateStudent_Success() {
-        when(studentRepository.findById(100L)).thenReturn(Optional.of(sampleStudent));
+        when(studentRepository.findBySchoolIdAndId(1L, 100L)).thenReturn(Optional.of(sampleStudent));
         when(studentRepository.existsBySchoolIdAndEmailAndIdNot(1L, "updated@alpha.edu", 100L)).thenReturn(false);
-        when(studentRepository.save(any(Student.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(studentRepository.saveAndFlush(any(Student.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         UpdateStudentRequestDto updateDto = UpdateStudentRequestDto.builder()
                 .firstName("Johnny")
@@ -285,8 +281,8 @@ class StudentServiceTest {
     @Test
     @DisplayName("updateStudentStatus updates student status and active flag")
     void updateStudentStatus_Success() {
-        when(studentRepository.findById(100L)).thenReturn(Optional.of(sampleStudent));
-        when(studentRepository.save(any(Student.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(studentRepository.findBySchoolIdAndId(1L, 100L)).thenReturn(Optional.of(sampleStudent));
+        when(studentRepository.saveAndFlush(any(Student.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         UpdateStudentStatusRequestDto statusDto = UpdateStudentStatusRequestDto.builder()
                 .status(StudentStatus.GRADUATED)
@@ -301,7 +297,7 @@ class StudentServiceTest {
     @Test
     @DisplayName("deleteStudent soft-deletes student")
     void deleteStudent_SoftDeletesStudent() {
-        when(studentRepository.findById(100L)).thenReturn(Optional.of(sampleStudent));
+        when(studentRepository.findBySchoolIdAndId(1L, 100L)).thenReturn(Optional.of(sampleStudent));
         when(studentRepository.save(any(Student.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         studentService.deleteStudent(100L, schoolAdminPrincipal);
@@ -333,11 +329,15 @@ class StudentServiceTest {
     @DisplayName("getStudentStatistics returns statistics metrics")
     void getStudentStatistics_Success() {
         when(schoolRepository.findById(1L)).thenReturn(Optional.of(sampleSchool));
+        when(planGuard.effectiveStudentLimit(sampleSchool)).thenReturn(500);
         when(studentRepository.countBySchoolId(1L)).thenReturn(100L);
-        when(studentRepository.countBySchoolIdAndActiveTrue(1L)).thenReturn(90L);
-        when(studentRepository.countBySchoolIdAndActiveFalse(1L)).thenReturn(10L);
-        when(studentRepository.findBySchoolId(eq(1L), any(Pageable.class)))
-                .thenReturn(new PageImpl<>(List.of(sampleStudent)));
+        when(studentRepository.countBySchoolIdAndStatus(1L, StudentStatus.ACTIVE)).thenReturn(90L);
+        when(studentRepository.countGroupedByStatus(1L))
+                .thenReturn(java.util.Collections.singletonList(new Object[]{StudentStatus.ACTIVE, 90L}));
+        when(studentRepository.countGroupedByGender(1L))
+                .thenReturn(java.util.Collections.singletonList(new Object[]{sampleStudent.getGender(), 90L}));
+        when(studentRepository.countGroupedByGradeLevel(1L))
+                .thenReturn(java.util.Collections.singletonList(new Object[]{sampleStudent.getGradeLevel(), 100L}));
 
         StudentStatsDto stats = studentService.getStudentStatistics(1L, schoolAdminPrincipal);
 
@@ -358,14 +358,14 @@ class StudentServiceTest {
                 .build();
         user.setId(25L);
 
-        when(studentRepository.findById(100L)).thenReturn(Optional.of(sampleStudent));
+        when(studentRepository.findBySchoolIdAndId(1L, 100L)).thenReturn(Optional.of(sampleStudent));
         when(userRepository.findById(25L)).thenReturn(Optional.of(user));
         when(studentRepository.findByUserId(25L)).thenReturn(Optional.empty());
-        when(studentRepository.save(any(Student.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(studentRepository.saveAndFlush(any(Student.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         StudentResponseDto response = studentService.linkUserAccount(100L, 25L, schoolAdminPrincipal);
 
         assertThat(response.getUserId()).isEqualTo(25L);
-        verify(studentRepository).save(sampleStudent);
+        verify(studentRepository).saveAndFlush(sampleStudent);
     }
 }

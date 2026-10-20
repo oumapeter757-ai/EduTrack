@@ -34,7 +34,7 @@ class SchoolMapperTest {
                 .subscriptionTier(SubscriptionTier.BASIC)
                 .build();
 
-        School entity = SchoolMapper.toEntity(dto);
+        School entity = schoolMapper.toEntity(dto);
 
         assertThat(entity).isNotNull();
         assertThat(entity.getCode()).isEqualTo("OWH");
@@ -96,9 +96,7 @@ class SchoolMapperTest {
         PublicSchoolProfileDto dto = schoolMapper.toPublicDto(school);
 
         assertThat(dto).isNotNull();
-        assertThat(dto.getId()).isEqualTo(7L);
         assertThat(dto.getName()).isEqualTo("Public High");
-        assertThat(dto.getCode()).isEqualTo("PUB");
         assertThat(dto.getSubdomain()).isEqualTo("pubhigh");
         assertThat(dto.getLogoUrl()).isEqualTo("https://example.com/logo.png");
     }
@@ -119,7 +117,7 @@ class SchoolMapperTest {
                 .timezone("Europe/London")
                 .build();
 
-        SchoolMapper.updateEntityFromProfileDto(updateDto, school);
+        schoolMapper.updateEntityFromProfileDto(updateDto, school);
 
         assertThat(school.getName()).isEqualTo("New Name");
         assertThat(school.getCity()).isEqualTo("New City");

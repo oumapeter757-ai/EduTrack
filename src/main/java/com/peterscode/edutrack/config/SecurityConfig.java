@@ -1,6 +1,5 @@
 package com.peterscode.edutrack.config;
 
-import com.peterscode.edutrack.security.RateLimitFilter;
 import com.peterscode.edutrack.security.jwt.JwtAuthenticationFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
@@ -24,7 +23,6 @@ import org.springframework.web.cors.CorsConfigurationSource;
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthFilter;
-    private final RateLimitFilter rateLimitFilter;
     private final AuthenticationProvider authenticationProvider;
     private final CorsConfigurationSource corsConfigurationSource;
     private final AuthenticationEntryPoint jwtAuthenticationEntryPoint;
@@ -42,9 +40,11 @@ public class SecurityConfig {
                 // 3. Set authorization rules for routes
                 .authorizeHttpRequests(auth -> auth
                         // Public authentication endpoints
-                        .requestMatchers("/api/v1/auth/**").permitAll()
+                        .requestMatchers(org.springframework.http.HttpMethod.POST,
+                                "/api/v1/auth/login", "/api/v1/auth/signup").permitAll()
                         // Public tenant lookup for login screens
                         .requestMatchers("/api/v1/schools/subdomain/**").permitAll()
+                        .requestMatchers("/api/v1/schools/code/**").permitAll()
                         // Actuator health check
                         .requestMatchers("/actuator/health").permitAll()
                         // Lock down everything else
@@ -74,7 +74,6 @@ public class SecurityConfig {
 
                 // 7. Register authentication provider and filters
                 .authenticationProvider(authenticationProvider)
-                .addFilterBefore(rateLimitFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();

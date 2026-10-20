@@ -13,6 +13,8 @@ public interface StudentService {
 
     StudentResponseDto getStudentByAdmissionNumber(String admissionNumber, UserPrincipal principal);
 
+    StudentResponseDto getStudentByAdmissionNumber(String admissionNumber, Long schoolId, UserPrincipal principal);
+
     StudentResponseDto getCurrentStudentProfile(UserPrincipal principal);
 
     StudentResponseDto updateStudent(Long id, UpdateStudentRequestDto requestDto, UserPrincipal principal);

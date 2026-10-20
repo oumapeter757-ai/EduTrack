@@ -18,7 +18,10 @@ import java.util.Set;
 @Setter
 @Getter
 @SuperBuilder
-@Table(name = "schools")
+@Table(name = "schools", uniqueConstraints = {
+        @UniqueConstraint(name = "uk_school_code", columnNames = "code"),
+        @UniqueConstraint(name = "uk_school_subdomain", columnNames = "subdomain")
+})
 public class School extends BaseEntity {
 
     @Column(nullable = false)
@@ -66,7 +69,7 @@ public class School extends BaseEntity {
     @Enumerated(EnumType.STRING)
     @Builder.Default
     @Column(name = "subscription_tier", nullable = false)
-    private SubscriptionTier subscriptionTier = SubscriptionTier.STANDARD;
+    private SubscriptionTier subscriptionTier = SubscriptionTier.FREE;
 
     @Enumerated(EnumType.STRING)
     @Builder.Default

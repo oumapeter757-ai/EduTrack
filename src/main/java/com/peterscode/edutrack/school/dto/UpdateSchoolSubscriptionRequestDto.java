@@ -3,7 +3,9 @@ package com.peterscode.edutrack.school.dto;
 import com.peterscode.edutrack.school.enums.ServiceModule;
 import com.peterscode.edutrack.school.enums.SubscriptionStatus;
 import com.peterscode.edutrack.school.enums.SubscriptionTier;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -16,15 +18,14 @@ import java.util.Set;
  * Super Admin DTO for managing school subscription tier, status, module entitlements, and capacity limits.
  */
 @Data
+@JsonIgnoreProperties(ignoreUnknown = false)
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 public class UpdateSchoolSubscriptionRequestDto {
 
-    @NotNull(message = "Subscription tier is required")
     private SubscriptionTier subscriptionTier;
 
-    @NotNull(message = "Subscription status is required")
     private SubscriptionStatus subscriptionStatus;
 
     private LocalDate subscriptionStartDate;
@@ -33,7 +34,9 @@ public class UpdateSchoolSubscriptionRequestDto {
 
     private Set<ServiceModule> enabledModules;
 
+    @Positive(message = "must be greater than 0")
     private Integer maxStudents;
 
+    @Positive(message = "must be greater than 0")
     private Integer maxTeachers;
 }

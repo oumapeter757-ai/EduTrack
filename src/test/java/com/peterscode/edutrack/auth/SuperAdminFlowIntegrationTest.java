@@ -24,11 +24,18 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import org.springframework.test.context.TestPropertySource;
+import org.springframework.jdbc.core.JdbcTemplate;
+
 @SpringBootTest
+@TestPropertySource(properties = "edutrack.bootstrap.token=test-bootstrap-token")
 class SuperAdminFlowIntegrationTest {
 
     @Autowired
     private WebApplicationContext context;
+
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
 
     private MockMvc mockMvc;
 
@@ -50,6 +57,10 @@ class SuperAdminFlowIntegrationTest {
                 .apply(springSecurity())
                 .build();
         userRepository.deleteAll();
+
+        jdbcTemplate.execute("CREATE TABLE IF NOT EXISTS edutrack_bootstrap_lock (id BIGINT PRIMARY KEY)");
+        jdbcTemplate.execute("DELETE FROM edutrack_bootstrap_lock");
+        jdbcTemplate.execute("INSERT INTO edutrack_bootstrap_lock (id) VALUES (1)");
 
         superAdminPrincipal = UserPrincipal.create(
                 User.builder()
@@ -86,13 +97,14 @@ class SuperAdminFlowIntegrationTest {
         firstAdmin.setPassword("Password123!");
 
         mockMvc.perform(post("/api/v1/auth/signup")
+                        .header("X-Bootstrap-Token", "test-bootstrap-token")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(firstAdmin)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.username").value("firstsuper"))
                 .andExpect(jsonPath("$.data.role").value("SUPER_ADMIN"))
-                .andExpect(jsonPath("$.data.schoolId").value(0));
+                .andExpect(jsonPath("$.data.schoolId").doesNotExist());
 
         assertThat(userRepository.existsByRole(Role.SUPER_ADMIN)).isTrue();
 
@@ -105,6 +117,7 @@ class SuperAdminFlowIntegrationTest {
         secondAdmin.setPassword("Password123!");
 
         mockMvc.perform(post("/api/v1/auth/signup")
+                        .header("X-Bootstrap-Token", "test-bootstrap-token")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(secondAdmin)))
                 .andExpect(status().isForbidden());
@@ -128,7 +141,7 @@ class SuperAdminFlowIntegrationTest {
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.username").value("anotheradmin"))
                 .andExpect(jsonPath("$.data.role").value("SUPER_ADMIN"))
-                .andExpect(jsonPath("$.data.schoolId").value(0));
+                .andExpect(jsonPath("$.data.schoolId").doesNotExist());
 
         assertThat(userRepository.existsByUsername("anotheradmin")).isTrue();
     }
@@ -163,6 +176,6 @@ class SuperAdminFlowIntegrationTest {
         mockMvc.perform(post("/api/v1/admin/super-admins")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(newAdmin)))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isUnauthorized());
     }
 }

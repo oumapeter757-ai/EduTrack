@@ -2,6 +2,7 @@ package com.peterscode.edutrack.school.dto;
 
 import com.peterscode.edutrack.school.enums.ServiceModule;
 import com.peterscode.edutrack.school.enums.SubscriptionTier;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
@@ -13,8 +14,10 @@ import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
 
 import java.util.Set;
+import java.time.LocalDate;
 
 @Data
+@JsonIgnoreProperties(ignoreUnknown = false)
 @SuperBuilder
 @NoArgsConstructor
 @AllArgsConstructor
@@ -62,11 +65,10 @@ public class CreateSchoolRequestDto {
     private String currency = "USD";
 
     @Builder.Default
-    private SubscriptionTier subscriptionTier = SubscriptionTier.STANDARD;
+    private SubscriptionTier subscriptionTier = SubscriptionTier.FREE;
 
-    private Set<ServiceModule> enabledModules;
+    private LocalDate subscriptionStartDate;
 
-    private Integer maxStudents;
+    private LocalDate subscriptionEndDate;
 
-    private Integer maxTeachers;
 }

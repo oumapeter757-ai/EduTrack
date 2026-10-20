@@ -9,14 +9,14 @@ public class StudentNotFoundException extends ResourceNotFoundException {
     }
 
     public StudentNotFoundException(Long id) {
-        super("Student", "id", id);
+        super("Student not found");
     }
 
     public static StudentNotFoundException byAdmissionNumber(String admissionNumber) {
-        return new StudentNotFoundException(String.format("Student not found with admission number: '%s'", admissionNumber));
+        return new StudentNotFoundException("Student not found");
     }
 
     public static StudentNotFoundException byUserId(Long userId) {
-        return new StudentNotFoundException(String.format("Student profile not found for user id: '%d'", userId));
+        return new StudentNotFoundException("Student profile not found");
     }
 }

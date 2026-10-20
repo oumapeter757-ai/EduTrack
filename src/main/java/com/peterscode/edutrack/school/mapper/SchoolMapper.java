@@ -3,28 +3,24 @@ package com.peterscode.edutrack.school.mapper;
 import com.peterscode.edutrack.school.dto.*;
 import com.peterscode.edutrack.school.entity.School;
 import com.peterscode.edutrack.school.enums.ServiceModule;
-import com.peterscode.edutrack.school.enums.SubscriptionStatus;
 import com.peterscode.edutrack.school.enums.SubscriptionTier;
+import com.peterscode.edutrack.school.service.PlanCatalog;
 import org.springframework.stereotype.Component;
 
-import java.util.HashSet;
-import java.util.Set;
+import java.util.EnumSet;
+import java.util.Collection;
+import java.time.ZoneId;
 
 @Component
 public class SchoolMapper {
 
-    public static School toEntity(CreateSchoolRequestDto requestDto) {
+    public School toEntity(CreateSchoolRequestDto requestDto) {
         if (requestDto == null) {
             return null;
         }
 
-        SubscriptionTier tier = requestDto.getSubscriptionTier() != null
-                ? requestDto.getSubscriptionTier()
-                : SubscriptionTier.STANDARD;
-
-        Set<ServiceModule> modules = requestDto.getEnabledModules() != null && !requestDto.getEnabledModules().isEmpty()
-                ? new HashSet<>(requestDto.getEnabledModules())
-                : new HashSet<>(ServiceModule.getDefaultModulesForTier(tier));
+        SubscriptionTier tier = requestDto.getSubscriptionTier() == null
+                ? SubscriptionTier.FREE : requestDto.getSubscriptionTier();
 
         return School.builder()
                 .name(requestDto.getName())
@@ -40,13 +36,12 @@ public class SchoolMapper {
                 .state(requestDto.getState())
                 .country(requestDto.getCountry())
                 .postalCode(requestDto.getPostalCode())
-                .timezone(requestDto.getTimezone() != null && !requestDto.getTimezone().isBlank() ? requestDto.getTimezone() : "UTC")
-                .currency(requestDto.getCurrency() != null && !requestDto.getCurrency().isBlank() ? requestDto.getCurrency() : "USD")
+                .timezone(validTimezone(requestDto.getTimezone()))
+                .currency(requestDto.getCurrency() != null && !requestDto.getCurrency().isBlank() ? requestDto.getCurrency() : "KES")
                 .subscriptionTier(tier)
-                .subscriptionStatus(SubscriptionStatus.ACTIVE)
-                .enabledModules(modules)
-                .maxStudents(requestDto.getMaxStudents())
-                .maxTeachers(requestDto.getMaxTeachers())
+                .maxStudents(tier == SubscriptionTier.ENTERPRISE ? null : PlanCatalog.maxStudents(tier))
+                .maxTeachers(tier == SubscriptionTier.ENTERPRISE ? null : PlanCatalog.maxTeachers(tier))
+                .enabledModules(enumSet(ServiceModule.getDefaultModulesForTier(tier)))
                 .active(true)
                 .build();
     }
@@ -79,7 +74,9 @@ public class SchoolMapper {
                 .subscriptionPlan(school.getSubscriptionTier() != null ? school.getSubscriptionTier().name() : null)
                 .subscriptionStartDate(school.getSubscriptionStartDate())
                 .subscriptionEndDate(school.getSubscriptionEndDate())
-                .enabledModules(school.getEnabledModules() != null ? new HashSet<>(school.getEnabledModules()) : Set.of())
+                .enabledModules(school.getEnabledModules() != null
+                        ? enumSet(school.getEnabledModules())
+                        : EnumSet.noneOf(ServiceModule.class))
                 .maxStudents(school.getMaxStudents())
                 .maxTeachers(school.getMaxTeachers())
                 .active(school.isActive())
@@ -94,9 +91,7 @@ public class SchoolMapper {
         }
 
         return PublicSchoolProfileDto.builder()
-                .id(school.getId())
                 .name(school.getName())
-                .code(school.getCode())
                 .subdomain(school.getSubdomain())
                 .logoUrl(school.getLogoUrl())
                 .websiteUrl(school.getWebsiteUrl())
@@ -106,7 +101,7 @@ public class SchoolMapper {
                 .build();
     }
 
-    public static void updateEntityFromProfileDto(UpdateSchoolProfileRequestDto dto, School school) {
+    public void updateEntityFromProfileDto(UpdateSchoolProfileRequestDto dto, School school) {
         if (dto == null || school == null) {
             return;
         }
@@ -145,14 +140,14 @@ public class SchoolMapper {
             school.setPostalCode(dto.getPostalCode());
         }
         if (dto.getTimezone() != null && !dto.getTimezone().isBlank()) {
-            school.setTimezone(dto.getTimezone());
+            school.setTimezone(validTimezone(dto.getTimezone()));
         }
         if (dto.getCurrency() != null && !dto.getCurrency().isBlank()) {
             school.setCurrency(dto.getCurrency());
         }
     }
 
-    public static void updateEntityFromSubscriptionDto(UpdateSchoolSubscriptionRequestDto dto, School school) {
+    public void updateEntityFromSubscriptionDto(UpdateSchoolSubscriptionRequestDto dto, School school) {
         if (dto == null || school == null) {
             return;
         }
@@ -170,8 +165,9 @@ public class SchoolMapper {
             school.setSubscriptionEndDate(dto.getSubscriptionEndDate());
         }
         if (dto.getEnabledModules() != null) {
-            school.setEnabledModules(new HashSet<>(dto.getEnabledModules()));
+            school.setEnabledModules(enumSet(dto.getEnabledModules()));
         }
+
         if (dto.getMaxStudents() != null) {
             school.setMaxStudents(dto.getMaxStudents());
         }
@@ -180,7 +176,7 @@ public class SchoolMapper {
         }
     }
 
-    public static void updateEntityFromDto(CreateSchoolRequestDto dto, School school) {
+    public void updateEntityFromDto(UpdateSchoolRequestDto dto, School school) {
         if (dto == null || school == null) {
             return;
         }
@@ -197,11 +193,18 @@ public class SchoolMapper {
         if (dto.getState() != null) school.setState(dto.getState());
         if (dto.getCountry() != null) school.setCountry(dto.getCountry());
         if (dto.getPostalCode() != null) school.setPostalCode(dto.getPostalCode());
-        if (dto.getTimezone() != null) school.setTimezone(dto.getTimezone());
+        if (dto.getTimezone() != null) school.setTimezone(validTimezone(dto.getTimezone()));
         if (dto.getCurrency() != null) school.setCurrency(dto.getCurrency());
-        if (dto.getSubscriptionTier() != null) school.setSubscriptionTier(dto.getSubscriptionTier());
-        if (dto.getEnabledModules() != null) school.setEnabledModules(new HashSet<>(dto.getEnabledModules()));
-        if (dto.getMaxStudents() != null) school.setMaxStudents(dto.getMaxStudents());
-        if (dto.getMaxTeachers() != null) school.setMaxTeachers(dto.getMaxTeachers());
+    }
+
+    private static EnumSet<ServiceModule> enumSet(Collection<ServiceModule> modules) {
+        EnumSet<ServiceModule> result = EnumSet.noneOf(ServiceModule.class);
+        if (modules != null) result.addAll(modules);
+        return result;
+    }
+
+    private static String validTimezone(String timezone) {
+        if (timezone == null || timezone.isBlank()) return "Africa/Nairobi";
+        return ZoneId.of(timezone.trim()).getId();
     }
 }

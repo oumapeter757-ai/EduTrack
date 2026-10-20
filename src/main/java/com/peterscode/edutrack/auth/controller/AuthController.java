@@ -12,6 +12,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import com.peterscode.edutrack.security.NoModuleRequired;
 
 /**
  * Authentication controller for login and initial super admin signup.
@@ -21,6 +22,7 @@ import org.springframework.web.bind.annotation.*;
  * Hierarchical user creation is handled by {@link com.peterscode.edutrack.user.controller.UserManagementController}.
  */
 @RestController
+@NoModuleRequired
 @RequestMapping("/api/v1/auth")
 @RequiredArgsConstructor
 public class AuthController {
@@ -35,9 +37,11 @@ public class AuthController {
     }
 
 
-    @PostMapping({"/signup", "/register"})
-    public ResponseEntity<ApiResponse<UserResponseDto>> signup(@Valid @RequestBody CreateSuperAdminRequestDto request) {
-        UserResponseDto response = registrationService.signupInitialSuperAdmin(request);
+    @PostMapping("/signup")
+    public ResponseEntity<ApiResponse<UserResponseDto>> signup(
+            @RequestHeader(value = "X-Bootstrap-Token", required = false) String bootstrapToken,
+            @Valid @RequestBody CreateSuperAdminRequestDto request) {
+        UserResponseDto response = registrationService.signupInitialSuperAdmin(request, bootstrapToken);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success("Super admin registered successfully", response));
     }

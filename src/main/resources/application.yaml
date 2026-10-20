@@ -1,6 +1,11 @@
 spring:
   application:
     name: EduTrack
+  jackson:
+    deserialization:
+      fail-on-unknown-properties: true
+  config:
+    import: optional:file:.env[.properties]
   profiles:
     active:
       - dev
@@ -23,6 +28,10 @@ spring:
     error:
       include-message: never
       include-binding-errors: never
+  data:
+    web:
+      pageable:
+        max-page-size: 100
 
 server:
   port: 8080
@@ -36,6 +45,17 @@ management:
     health:
       show-details: when-authorized
 
+edutrack:
+  auth:
+    rate-limit:
+      login-email-max-failures: ${EDUTRACK_AUTH_RATE_LIMIT_LOGIN_EMAIL_MAX_FAILURES:5}
+      login-ip-max-failures: ${EDUTRACK_AUTH_RATE_LIMIT_LOGIN_IP_MAX_FAILURES:30}
+      signup-ip-max-attempts: ${EDUTRACK_AUTH_RATE_LIMIT_SIGNUP_IP_MAX_ATTEMPTS:5}
+      window-seconds: ${EDUTRACK_AUTH_RATE_LIMIT_WINDOW_SECONDS:900}
+      signup-window-seconds: ${EDUTRACK_AUTH_RATE_LIMIT_SIGNUP_WINDOW_SECONDS:3600}
+      public-lookup-max-attempts: ${EDUTRACK_AUTH_RATE_LIMIT_PUBLIC_LOOKUP_MAX_ATTEMPTS:30}
+      trusted-proxy: ${EDUTRACK_AUTH_RATE_LIMIT_TRUSTED_PROXY:false}
+
 application:
   security:
     jwt:
@@ -43,3 +63,6 @@ application:
       secret-key: ${JWT_SECRET_KEY}
 
       expiration: 86400000
+
+# Set edutrack.bootstrap.token from an environment variable for the first
+# administrator only, then remove the variable after signup succeeds.

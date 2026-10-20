@@ -25,12 +25,14 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
 
 import java.util.Set;
+import java.time.LocalDate;
 
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBootTest
 class SchoolIntegrationTest {
@@ -135,6 +137,7 @@ class SchoolIntegrationTest {
                 .phone("+1234567890")
                 .city("Seattle")
                 .subscriptionTier(SubscriptionTier.ENTERPRISE)
+                .subscriptionEndDate(LocalDate.now().plusDays(30))
                 .build();
 
         mockMvc.perform(post("/api/v1/schools")
@@ -200,7 +203,7 @@ class SchoolIntegrationTest {
                         .with(user(schoolAdminPrincipal2))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(profileDto)))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isNotFound());
     }
 
     @Test
@@ -227,6 +230,7 @@ class SchoolIntegrationTest {
                 .maxStudents(10000)
                 .maxTeachers(500)
                 .enabledModules(Set.of(ServiceModule.LMS, ServiceModule.BILLING, ServiceModule.TRANSPORT))
+                .subscriptionEndDate(LocalDate.now().plusDays(30))
                 .build();
 
         mockMvc.perform(put("/api/v1/schools/" + savedSchool1.getId() + "/subscription")
@@ -247,7 +251,27 @@ class SchoolIntegrationTest {
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.name").value("Alpha Academy"))
                 .andExpect(jsonPath("$.data.subdomain").value("alpha"))
+                .andExpect(jsonPath("$.data.id").doesNotExist())
+                .andExpect(jsonPath("$.data.code").doesNotExist())
+                .andExpect(jsonPath("$.data.email").doesNotExist())
+                .andExpect(jsonPath("$.data.subscriptionTier").doesNotExist())
+                .andExpect(jsonPath("$.data.enabledModules").doesNotExist())
                 .andExpect(jsonPath("$.data.active").value(true));
+    }
+
+    @Test
+    @DisplayName("School profile rejects unknown subscription fields")
+    void schoolProfileRejectsUnknownSubscriptionFields() throws Exception {
+        mockMvc.perform(put("/api/v1/schools/" + savedSchool1.getId() + "/profile")
+                        .with(user(schoolAdminPrincipal1))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"name":"Tampered School","subscriptionTier":"ENTERPRISE","maxStudents":999999}
+                                """))
+                .andExpect(status().isBadRequest());
+
+        assertThat(schoolRepository.findById(savedSchool1.getId()).orElseThrow().getName())
+                .isEqualTo("Alpha Academy");
     }
 
     @Test

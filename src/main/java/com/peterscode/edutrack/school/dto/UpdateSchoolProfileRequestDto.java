@@ -1,8 +1,10 @@
 package com.peterscode.edutrack.school.dto;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.Pattern;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -13,6 +15,7 @@ import lombok.NoArgsConstructor;
  * Code and Subdomain are immutable once created to preserve tenant routing and history.
  */
 @Data
+@JsonIgnoreProperties(ignoreUnknown = false)
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
@@ -43,6 +46,7 @@ public class UpdateSchoolProfileRequestDto {
 
     private String postalCode;
 
+    @Pattern(regexp = "^[A-Za-z_]+/[A-Za-z_]+(?:/[A-Za-z_]+)?$", message = "Timezone must be a valid IANA timezone")
     private String timezone;
 
     private String currency;

@@ -15,10 +15,12 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import com.peterscode.edutrack.security.NoModuleRequired;
 
 import java.util.Set;
 
 @RestController
+@NoModuleRequired
 @RequestMapping("/api/v1/schools")
 @RequiredArgsConstructor
 public class SchoolController {
@@ -44,7 +46,7 @@ public class SchoolController {
     @PreAuthorize("hasRole('SUPER_ADMIN')")
     public ResponseEntity<ApiResponse<SchoolResponseDto>> updateSchool(
             @PathVariable Long id,
-            @Valid @RequestBody CreateSchoolRequestDto requestDto) {
+            @Valid @RequestBody UpdateSchoolRequestDto requestDto) {
         SchoolResponseDto response = schoolService.updateSchool(id, requestDto);
         return ResponseEntity.ok(ApiResponse.success("School updated successfully", response));
     }
@@ -53,11 +55,12 @@ public class SchoolController {
      * Update school profile (contact, address, branding, localization).
      */
     @PutMapping("/{id}/profile")
-    @PreAuthorize("hasRole('SUPER_ADMIN') or (hasRole('SCHOOL_ADMIN') and @securityUtils.isCurrentTenant(#id))")
+    @PreAuthorize("hasRole('SUPER_ADMIN') or hasRole('SCHOOL_ADMIN')")
     public ResponseEntity<ApiResponse<SchoolResponseDto>> updateSchoolProfile(
             @PathVariable Long id,
-            @Valid @RequestBody UpdateSchoolProfileRequestDto requestDto) {
-        SchoolResponseDto response = schoolService.updateSchoolProfile(id, requestDto);
+            @Valid @RequestBody UpdateSchoolProfileRequestDto requestDto,
+            @AuthenticationPrincipal UserPrincipal principal) {
+        SchoolResponseDto response = schoolService.updateSchoolProfile(id, requestDto, principal);
         return ResponseEntity.ok(ApiResponse.success("School profile updated successfully", response));
     }
 
@@ -88,10 +91,11 @@ public class SchoolController {
      * Retrieve school details by ID (SUPER_ADMIN or any authenticated user of this school).
      */
     @GetMapping("/{id}")
-    @PreAuthorize("hasRole('SUPER_ADMIN') or @securityUtils.isCurrentTenant(#id)")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<SchoolResponseDto>> getSchoolById(
-            @PathVariable Long id) {
-        SchoolResponseDto response = schoolService.getSchoolById(id);
+            @PathVariable Long id,
+            @AuthenticationPrincipal UserPrincipal principal) {
+        SchoolResponseDto response = schoolService.getSchoolById(id, principal);
         return ResponseEntity.ok(ApiResponse.success("School retrieved successfully", response));
     }
 
@@ -99,10 +103,10 @@ public class SchoolController {
      * Retrieve school details by unique school code.
      */
     @GetMapping("/code/{code}")
-    @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<ApiResponse<SchoolResponseDto>> getSchoolByCode(
+    @PreAuthorize("permitAll()")
+    public ResponseEntity<ApiResponse<PublicSchoolProfileDto>> getSchoolByCode(
             @PathVariable String code) {
-        SchoolResponseDto response = schoolService.getSchoolByCode(code);
+        PublicSchoolProfileDto response = schoolService.getSchoolByCode(code);
         return ResponseEntity.ok(ApiResponse.success("School retrieved successfully", response));
     }
 
@@ -110,6 +114,7 @@ public class SchoolController {
      * Public tenant lookup by subdomain for login and brand resolution (permitAll).
      */
     @GetMapping("/subdomain/{subdomain}")
+    @PreAuthorize("permitAll()")
     public ResponseEntity<ApiResponse<PublicSchoolProfileDto>> getSchoolBySubdomain(
             @PathVariable String subdomain) {
         PublicSchoolProfileDto response = schoolService.getPublicSchoolBySubdomain(subdomain);

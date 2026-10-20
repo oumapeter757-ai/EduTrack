@@ -14,9 +14,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class PublicSchoolProfileDto {
-    private Long id;
     private String name;
-    private String code;
     private String subdomain;
     private String logoUrl;
     private String websiteUrl;

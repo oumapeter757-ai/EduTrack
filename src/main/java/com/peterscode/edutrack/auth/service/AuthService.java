@@ -6,11 +6,16 @@ import com.peterscode.edutrack.school.entity.School;
 import com.peterscode.edutrack.school.repository.SchoolRepository;
 import com.peterscode.edutrack.security.jwt.JwtService;
 import com.peterscode.edutrack.security.UserPrincipal;
+import com.peterscode.edutrack.security.AuthRateLimiter;
+import com.peterscode.edutrack.security.ModuleAccessService;
+import com.peterscode.edutrack.shared.exception.SchoolInactiveException;
+import com.peterscode.edutrack.shared.exception.SchoolRequiredException;
 import com.peterscode.edutrack.user.entity.Role;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.stereotype.Service;
 
 /**
@@ -26,22 +31,29 @@ public class AuthService {
     private final AuthenticationManager authenticationManager;
     private final JwtService jwtService;
     private final SchoolRepository schoolRepository;
+    private final ModuleAccessService moduleAccessService;
+    private final AuthRateLimiter rateLimiter;
 
     public AuthResponseDto login(LoginRequestDto request) {
-        Authentication authentication = authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(
-                        request.getEmail(),
-                        request.getPassword()
-                )
-        );
+        String email = request.getEmail().trim().toLowerCase();
+        rateLimiter.checkLogin(email);
+        Authentication authentication;
+        try {
+            authentication = authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(email, request.getPassword()));
+        } catch (AuthenticationException ex) {
+            throw ex;
+        }
 
         UserPrincipal userPrincipal = (UserPrincipal) authentication.getPrincipal();
 
         // Block login for users whose school has been deactivated (SUPER_ADMIN has no school)
-        if (userPrincipal.getRole() != Role.SUPER_ADMIN && userPrincipal.getSchoolId() != null) {
-            School school = schoolRepository.findById(userPrincipal.getSchoolId()).orElse(null);
-            if (school == null || !school.isActive()) {
-                throw new IllegalStateException("Your school account has been deactivated. Please contact support.");
+        if (userPrincipal.getRole() != Role.SUPER_ADMIN) {
+            if (userPrincipal.getSchoolId() == null) {
+                throw new SchoolRequiredException();
+            }
+            if (!moduleAccessService.isSchoolActive(userPrincipal.getSchoolId())) {
+                throw new SchoolInactiveException("Your school account has been deactivated. Please contact support.");
             }
         }
 

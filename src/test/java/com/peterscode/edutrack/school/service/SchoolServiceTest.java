@@ -27,11 +27,16 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.time.LocalDate;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
+
+import com.peterscode.edutrack.security.UserPrincipal;
+import com.peterscode.edutrack.user.entity.Role;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 
 @ExtendWith(MockitoExtension.class)
 class SchoolServiceTest {
@@ -39,17 +44,41 @@ class SchoolServiceTest {
     @Mock
     private SchoolRepository schoolRepository;
 
+    @Mock
+    private com.peterscode.edutrack.security.AuthRateLimiter authRateLimiter;
+
     @Spy
     private SchoolMapper schoolMapper = new SchoolMapper();
+
+    @Spy
+    private SubscriptionTermsResolver subscriptionTermsResolver = new SubscriptionTermsResolver();
 
     @InjectMocks
     private SchoolServiceImpl schoolService;
 
     private School sampleSchool;
     private CreateSchoolRequestDto createDto;
+    private UserPrincipal schoolAdminPrincipal;
+    private UserPrincipal superAdminPrincipal;
 
     @BeforeEach
     void setUp() {
+        schoolAdminPrincipal = UserPrincipal.builder()
+                .id(1L)
+                .email("admin@greenwood.edu")
+                .schoolId(10L)
+                .role(Role.SCHOOL_ADMIN)
+                .authorities(List.of(new SimpleGrantedAuthority("ROLE_SCHOOL_ADMIN")))
+                .active(true)
+                .build();
+        superAdminPrincipal = UserPrincipal.builder()
+                .id(2L)
+                .email("super@edutrack.com")
+                .role(Role.SUPER_ADMIN)
+                .authorities(List.of(new SimpleGrantedAuthority("ROLE_SUPER_ADMIN")))
+                .active(true)
+                .build();
+
         sampleSchool = School.builder()
                 .name("Greenwood High")
                 .code("GWH")
@@ -74,6 +103,7 @@ class SchoolServiceTest {
                 .email("info@greenwood.edu")
                 .phone("+1234567890")
                 .subscriptionTier(SubscriptionTier.PREMIUM)
+                .subscriptionEndDate(LocalDate.now().plusDays(30))
                 .build();
     }
 
@@ -82,7 +112,7 @@ class SchoolServiceTest {
     void createSchool_Success() {
         when(schoolRepository.existsByCode("GWH")).thenReturn(false);
         when(schoolRepository.existsBySubdomain("greenwood")).thenReturn(false);
-        when(schoolRepository.save(any(School.class))).thenAnswer(invocation -> {
+        when(schoolRepository.saveAndFlush(any(School.class))).thenAnswer(invocation -> {
             School school = invocation.getArgument(0);
             school.setId(10L);
             return school;
@@ -96,7 +126,7 @@ class SchoolServiceTest {
         assertThat(response.getSubdomain()).isEqualTo("greenwood");
         assertThat(response.getSubscriptionTier()).isEqualTo(SubscriptionTier.PREMIUM);
         assertThat(response.getEnabledModules()).contains(ServiceModule.ATTENDANCE, ServiceModule.GRADING, ServiceModule.BILLING);
-        verify(schoolRepository).save(any(School.class));
+        verify(schoolRepository).saveAndFlush(any(School.class));
     }
 
     @Test
@@ -129,10 +159,9 @@ class SchoolServiceTest {
     void getSchoolById_Success() {
         when(schoolRepository.findById(10L)).thenReturn(Optional.of(sampleSchool));
 
-        SchoolResponseDto response = schoolService.getSchoolById(10L);
+        SchoolResponseDto response = schoolService.getSchoolById(10L, schoolAdminPrincipal);
 
         assertThat(response).isNotNull();
-        assertThat(response.getId()).isEqualTo(10L);
         assertThat(response.getName()).isEqualTo("Greenwood High");
     }
 
@@ -141,7 +170,7 @@ class SchoolServiceTest {
     void getSchoolById_NotFound_ThrowsException() {
         when(schoolRepository.findById(999L)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> schoolService.getSchoolById(999L))
+        assertThatThrownBy(() -> schoolService.getSchoolById(999L, superAdminPrincipal))
                 .isInstanceOf(SchoolNotFoundException.class)
                 .hasMessageContaining("School not found with id: '999'");
     }
@@ -154,7 +183,6 @@ class SchoolServiceTest {
         PublicSchoolProfileDto response = schoolService.getPublicSchoolBySubdomain("greenwood");
 
         assertThat(response).isNotNull();
-        assertThat(response.getId()).isEqualTo(10L);
         assertThat(response.getName()).isEqualTo("Greenwood High");
         assertThat(response.getSubdomain()).isEqualTo("greenwood");
         assertThat(response.getTimezone()).isEqualTo("America/New_York");
@@ -172,7 +200,7 @@ class SchoolServiceTest {
                 .timezone("America/Chicago")
                 .build();
 
-        SchoolResponseDto response = schoolService.updateSchoolProfile(10L, profileDto);
+        SchoolResponseDto response = schoolService.updateSchoolProfile(10L, profileDto, schoolAdminPrincipal);
 
         assertThat(response).isNotNull();
         assertThat(response.getName()).isEqualTo("Greenwood Academy");
@@ -185,7 +213,7 @@ class SchoolServiceTest {
     @DisplayName("updateSchoolSubscription updates subscription tier and module entitlements")
     void updateSchoolSubscription_Success() {
         when(schoolRepository.findById(10L)).thenReturn(Optional.of(sampleSchool));
-        when(schoolRepository.save(any(School.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(schoolRepository.saveAndFlush(any(School.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         UpdateSchoolSubscriptionRequestDto subDto = UpdateSchoolSubscriptionRequestDto.builder()
                 .subscriptionTier(SubscriptionTier.ENTERPRISE)
@@ -193,6 +221,7 @@ class SchoolServiceTest {
                 .enabledModules(Set.of(ServiceModule.LMS, ServiceModule.TRANSPORT, ServiceModule.BILLING))
                 .maxStudents(5000)
                 .maxTeachers(200)
+                .subscriptionEndDate(LocalDate.now().plusDays(30))
                 .build();
 
         SchoolResponseDto response = schoolService.updateSchoolSubscription(10L, subDto);

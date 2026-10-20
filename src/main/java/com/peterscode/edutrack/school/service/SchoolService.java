@@ -3,6 +3,7 @@ package com.peterscode.edutrack.school.service;
 import com.peterscode.edutrack.school.dto.*;
 import com.peterscode.edutrack.school.enums.ServiceModule;
 import com.peterscode.edutrack.school.enums.SubscriptionTier;
+import com.peterscode.edutrack.security.UserPrincipal;
 import com.peterscode.edutrack.shared.response.PageResponse;
 import org.springframework.data.domain.Pageable;
 
@@ -12,19 +13,18 @@ public interface SchoolService {
 
     SchoolResponseDto createSchool(CreateSchoolRequestDto requestDto);
 
-    SchoolResponseDto updateSchool(Long id, CreateSchoolRequestDto requestDto);
+    SchoolResponseDto updateSchool(Long id, UpdateSchoolRequestDto requestDto);
 
-    SchoolResponseDto updateSchoolProfile(Long id, UpdateSchoolProfileRequestDto requestDto);
+    SchoolResponseDto updateSchoolProfile(Long id, UpdateSchoolProfileRequestDto requestDto,
+                                          UserPrincipal principal);
 
     SchoolResponseDto updateSchoolSubscription(Long id, UpdateSchoolSubscriptionRequestDto requestDto);
 
-    SchoolResponseDto getSchoolById(Long id);
+    SchoolResponseDto getSchoolById(Long id, UserPrincipal principal);
 
-    SchoolResponseDto getSchoolByCode(String code);
+    PublicSchoolProfileDto getSchoolByCode(String code);
 
     PublicSchoolProfileDto getPublicSchoolBySubdomain(String subdomain);
-
-    SchoolResponseDto getSchoolBySubdomain(String subdomain);
 
     PageResponse<SchoolResponseDto> getAllSchools(String search, SubscriptionTier tier, Boolean active, Pageable pageable);
 

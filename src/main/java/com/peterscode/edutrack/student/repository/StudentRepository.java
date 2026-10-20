@@ -12,6 +12,7 @@ import org.springframework.stereotype.Repository;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
+import com.peterscode.edutrack.student.enums.Gender;
 
 @Repository
 public interface StudentRepository extends JpaRepository<Student, Long>, JpaSpecificationExecutor<Student> {
@@ -51,4 +52,16 @@ public interface StudentRepository extends JpaRepository<Student, Long>, JpaSpec
     List<Student> findBySchoolIdAndGradeLevelAndSection(Long schoolId, String gradeLevel, String section);
 
     List<Student> findAllBySchoolIdAndIdIn(Long schoolId, Collection<Long> ids);
+
+    @org.springframework.data.jpa.repository.Query("select s.status as key, count(s) as value from Student s where s.schoolId = :schoolId group by s.status")
+    List<Object[]> countGroupedByStatus(Long schoolId);
+
+    @org.springframework.data.jpa.repository.Query("select s.gender as key, count(s) as value from Student s where s.schoolId = :schoolId group by s.gender")
+    List<Object[]> countGroupedByGender(Long schoolId);
+
+    @org.springframework.data.jpa.repository.Query("select s.gradeLevel as key, count(s) as value from Student s where s.schoolId = :schoolId and s.gradeLevel is not null group by s.gradeLevel")
+    List<Object[]> countGroupedByGradeLevel(Long schoolId);
+
+    @org.springframework.data.jpa.repository.Query("select s.classLevelId, count(s) from Student s where s.schoolId = :schoolId group by s.classLevelId")
+    List<Object[]> countGroupedByClassLevel(Long schoolId);
 }

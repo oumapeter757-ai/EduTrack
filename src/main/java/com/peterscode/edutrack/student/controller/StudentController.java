@@ -16,8 +16,11 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import com.peterscode.edutrack.security.RequiresModule;
+import com.peterscode.edutrack.school.enums.ServiceModule;
 
 @RestController
+@RequiresModule(ServiceModule.STUDENT_MANAGEMENT)
 @RequestMapping("/api/v1/students")
 @RequiredArgsConstructor
 public class StudentController {
@@ -41,7 +44,7 @@ public class StudentController {
      * Get student by ID.
      */
     @GetMapping("/{id}")
-    @PreAuthorize("hasRole('SUPER_ADMIN') or hasAnyRole('SCHOOL_ADMIN', 'TEACHER', 'STUDENT', 'PARENT')")
+    @PreAuthorize("hasRole('SUPER_ADMIN') or hasAnyRole('SCHOOL_ADMIN', 'TEACHER', 'STUDENT')")
     public ResponseEntity<ApiResponse<StudentResponseDto>> getStudentById(
             @PathVariable Long id,
             @AuthenticationPrincipal UserPrincipal principal) {
@@ -56,8 +59,9 @@ public class StudentController {
     @PreAuthorize("hasRole('SUPER_ADMIN') or hasAnyRole('SCHOOL_ADMIN', 'TEACHER')")
     public ResponseEntity<ApiResponse<StudentResponseDto>> getStudentByAdmissionNumber(
             @PathVariable String admissionNumber,
+            @RequestParam(required = false) Long schoolId,
             @AuthenticationPrincipal UserPrincipal principal) {
-        StudentResponseDto response = studentService.getStudentByAdmissionNumber(admissionNumber, principal);
+        StudentResponseDto response = studentService.getStudentByAdmissionNumber(admissionNumber, schoolId, principal);
         return ResponseEntity.ok(ApiResponse.success("Student retrieved successfully", response));
     }
 

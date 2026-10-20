@@ -6,6 +6,7 @@ package com.peterscode.edutrack.school.enums;
 public enum SubscriptionStatus {
     TRIAL,
     ACTIVE,
+    GRACE,
     SUSPENDED,
     EXPIRED,
     CANCELLED
