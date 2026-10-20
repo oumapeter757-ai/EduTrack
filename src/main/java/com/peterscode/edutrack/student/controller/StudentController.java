@@ -44,7 +44,7 @@ public class StudentController {
      * Get student by ID.
      */
     @GetMapping("/{id}")
-    @PreAuthorize("hasRole('SUPER_ADMIN') or hasAnyRole('SCHOOL_ADMIN', 'TEACHER', 'STUDENT')")
+    @PreAuthorize("hasRole('SUPER_ADMIN') or hasAnyRole('SCHOOL_ADMIN', 'TEACHER', 'STUDENT', 'PARENT')")
     public ResponseEntity<ApiResponse<StudentResponseDto>> getStudentById(
             @PathVariable Long id,
             @AuthenticationPrincipal UserPrincipal principal) {

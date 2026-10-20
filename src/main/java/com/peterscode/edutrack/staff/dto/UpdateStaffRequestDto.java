@@ -4,6 +4,7 @@ import com.peterscode.edutrack.staff.enums.StaffStatus;
 import jakarta.validation.constraints.*;
 import java.time.LocalDate;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import lombok.*;
 
 @Data
 @Builder

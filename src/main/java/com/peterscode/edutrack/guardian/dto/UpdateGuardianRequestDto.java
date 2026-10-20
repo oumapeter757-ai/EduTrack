@@ -2,6 +2,7 @@ package com.peterscode.edutrack.guardian.dto;
 
 import jakarta.validation.constraints.*;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import lombok.*;
 
 @Data
 @Builder

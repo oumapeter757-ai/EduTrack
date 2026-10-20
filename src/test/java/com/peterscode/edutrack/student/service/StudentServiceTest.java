@@ -246,6 +246,44 @@ class StudentServiceTest {
     }
 
     @Test
+    @DisplayName("getStudentById succeeds for PARENT user when email matches student guardianEmail")
+    void getStudentById_ParentUser_MatchingEmail_Success() {
+        sampleStudent.setGuardianEmail("parent@alpha.edu");
+        when(studentRepository.findBySchoolIdAndId(1L, 100L)).thenReturn(Optional.of(sampleStudent));
+
+        UserPrincipal parentPrincipal = UserPrincipal.builder()
+                .id(20L)
+                .email("parent@alpha.edu")
+                .schoolId(1L)
+                .role(Role.PARENT)
+                .active(true)
+                .build();
+
+        StudentResponseDto response = studentService.getStudentById(100L, parentPrincipal);
+
+        assertThat(response).isNotNull();
+        assertThat(response.getId()).isEqualTo(100L);
+    }
+
+    @Test
+    @DisplayName("getStudentById throws StudentNotFoundException for PARENT user when email does not match")
+    void getStudentById_ParentUser_MismatchEmail_ThrowsNotFound() {
+        sampleStudent.setGuardianEmail("other.parent@alpha.edu");
+        when(studentRepository.findBySchoolIdAndId(1L, 100L)).thenReturn(Optional.of(sampleStudent));
+
+        UserPrincipal parentPrincipal = UserPrincipal.builder()
+                .id(20L)
+                .email("unrelated.parent@alpha.edu")
+                .schoolId(1L)
+                .role(Role.PARENT)
+                .active(true)
+                .build();
+
+        assertThatThrownBy(() -> studentService.getStudentById(100L, parentPrincipal))
+                .isInstanceOf(StudentNotFoundException.class);
+    }
+
+    @Test
     @DisplayName("getCurrentStudentProfile succeeds for logged in student user")
     void getCurrentStudentProfile_Success() {
         when(studentRepository.findBySchoolIdAndUserId(1L, 10L)).thenReturn(Optional.of(sampleStudent));

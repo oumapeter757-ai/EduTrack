@@ -1,6 +1,7 @@
 package com.peterscode.edutrack.subject.service;
 
 import com.peterscode.edutrack.classlevel.entity.ClassLevel;
+import com.peterscode.edutrack.classlevel.exception.ClassLevelNotFoundException;
 import com.peterscode.edutrack.classlevel.repository.ClassLevelRepository;
 import com.peterscode.edutrack.school.entity.School;
 import com.peterscode.edutrack.school.repository.SchoolRepository;

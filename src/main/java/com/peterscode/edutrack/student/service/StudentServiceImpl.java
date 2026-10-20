@@ -107,9 +107,6 @@ public class StudentServiceImpl implements StudentService {
     @Override
     public StudentResponseDto getStudentById(Long id, UserPrincipal principal) {
         requirePrincipal(principal);
-        if (principal.getRole() == Role.PARENT) {
-            throw new UnauthorizedOperationException("Access denied");
-        }
         Student student = (principal.getRole() == Role.SUPER_ADMIN
                 ? studentRepository.findById(id)
                 : studentRepository.findBySchoolIdAndId(requireSchool(principal), id))
