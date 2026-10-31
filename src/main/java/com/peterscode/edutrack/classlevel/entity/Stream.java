@@ -49,4 +49,7 @@ public class Stream extends BaseEntity {
     @Column(name = "active", nullable = false)
     @Builder.Default
     private boolean active = true;
+
+    @Column(name = "class_teacher_id")
+    private Long classTeacherId;
 }
