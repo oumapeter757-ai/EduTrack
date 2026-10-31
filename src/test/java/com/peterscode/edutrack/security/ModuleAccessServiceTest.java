@@ -54,6 +54,17 @@ class ModuleAccessServiceTest {
     }
 
     @Test
+    void expiryDateIsEvaluatedInTheSchoolsTimezone() {
+        School school = school(SubscriptionTier.BASIC, SubscriptionStatus.ACTIVE,
+                LocalDate.of(2026, 1, 15), EnumSet.allOf(ServiceModule.class));
+        school.setTimezone("America/Los_Angeles");
+        when(schools.findById(7L)).thenReturn(Optional.of(school));
+        clock.setInstant(Instant.parse("2026-01-16T00:01:00Z"));
+
+        assertThat(service.entitlements(7L).status()).isEqualTo(SubscriptionStatus.ACTIVE);
+    }
+
+    @Test
     void freeTierCannotGainTimetableThroughTamperedEnabledModules() {
         School school = school(SubscriptionTier.FREE, SubscriptionStatus.ACTIVE, null,
                 EnumSet.allOf(ServiceModule.class));
@@ -63,6 +74,38 @@ class ModuleAccessServiceTest {
 
         assertThat(entitlements.hasModule(ServiceModule.ATTENDANCE)).isTrue();
         assertThat(entitlements.hasModule(ServiceModule.TIMETABLE)).isFalse();
+    }
+
+    @Test
+    void cachedEntitlementsAreIsolatedBySchoolId() {
+        School freeSchool = school(7L, SubscriptionTier.FREE, SubscriptionStatus.ACTIVE, null,
+                EnumSet.allOf(ServiceModule.class));
+        School basicSchool = school(8L, SubscriptionTier.BASIC, SubscriptionStatus.ACTIVE, null,
+                EnumSet.allOf(ServiceModule.class));
+        when(schools.findById(7L)).thenReturn(Optional.of(freeSchool));
+        when(schools.findById(8L)).thenReturn(Optional.of(basicSchool));
+
+        assertThat(service.entitlements(7L).hasModule(ServiceModule.TIMETABLE)).isFalse();
+        assertThat(service.entitlements(8L).hasModule(ServiceModule.TIMETABLE)).isTrue();
+        assertThat(service.entitlements(7L).hasModule(ServiceModule.TIMETABLE)).isFalse();
+
+        verify(schools, times(1)).findById(7L);
+        verify(schools, times(1)).findById(8L);
+    }
+
+    @Test
+    void cacheEvictionMakesTierChangesVisibleOnTheNextRequest() {
+        School freeSchool = school(7L, SubscriptionTier.FREE, SubscriptionStatus.ACTIVE, null,
+                EnumSet.allOf(ServiceModule.class));
+        School basicSchool = school(7L, SubscriptionTier.BASIC, SubscriptionStatus.ACTIVE, null,
+                EnumSet.allOf(ServiceModule.class));
+        when(schools.findById(7L)).thenReturn(Optional.of(freeSchool), Optional.of(basicSchool), Optional.of(freeSchool));
+
+        assertThat(service.entitlements(7L).hasModule(ServiceModule.TIMETABLE)).isFalse();
+        service.evict(7L);
+        assertThat(service.entitlements(7L).hasModule(ServiceModule.TIMETABLE)).isTrue();
+        service.evict(7L);
+        assertThat(service.entitlements(7L).hasModule(ServiceModule.TIMETABLE)).isFalse();
     }
 
     @Test
@@ -78,6 +121,15 @@ class ModuleAccessServiceTest {
     }
 
     @Test
+    void missingSchoolFailsClosed() {
+        when(schools.findById(404L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.entitlements(404L))
+                .isInstanceOf(ModuleAccessDeniedException.class)
+                .hasFieldOrPropertyWithValue("errorCode", "ACCESS_DENIED");
+    }
+
+    @Test
     void negativeGracePeriodFailsStartupValidation() {
         ReflectionTestUtils.setField(service, "graceDays", -1);
 
@@ -87,7 +139,12 @@ class ModuleAccessServiceTest {
 
     private School school(SubscriptionTier tier, SubscriptionStatus status, LocalDate endDate,
             java.util.Set<ServiceModule> modules) {
-        return School.builder().id(7L).active(true).timezone("UTC").subscriptionTier(tier)
+        return school(7L, tier, status, endDate, modules);
+    }
+
+    private School school(Long id, SubscriptionTier tier, SubscriptionStatus status, LocalDate endDate,
+            java.util.Set<ServiceModule> modules) {
+        return School.builder().id(id).active(true).timezone("UTC").subscriptionTier(tier)
                 .subscriptionStatus(status).subscriptionEndDate(endDate).enabledModules(modules).build();
     }
 

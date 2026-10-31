@@ -54,10 +54,7 @@ class ModuleAccessAspectOrderTest {
 
     @Test
     void preAuthorizeDeniesBeforeSubscriptionGateLoadsTenantEntitlements() {
-        UserPrincipal teacher = UserPrincipal.builder().id(8L).schoolId(7L).role(Role.TEACHER)
-                .authorities(List.of(new SimpleGrantedAuthority("ROLE_TEACHER"))).active(true).build();
-        SecurityContextHolder.getContext().setAuthentication(
-                new UsernamePasswordAuthenticationToken(teacher, null, teacher.getAuthorities()));
+        authenticate(Role.PARENT, 7L);
 
         assertThatThrownBy(() -> probe.roleOnly()).isInstanceOf(AccessDeniedException.class);
         assertThatThrownBy(() -> probe.read(7L)).isInstanceOf(AccessDeniedException.class);
@@ -67,24 +64,28 @@ class ModuleAccessAspectOrderTest {
 
     @Test
     void freeEntitlementsAllowAttendanceButDenyTimetableEvenWhenEnabledModulesAreTampered() {
-        authenticate(Role.SCHOOL_ADMIN, 7L);
         when(access.entitlements(7L)).thenReturn(entitlements(
                 SubscriptionTier.FREE, SubscriptionStatus.ACTIVE, true, List.of(ServiceModule.values())));
 
-        assertThatThrownBy(() -> probe.read(7L))
-                .isInstanceOf(ModuleAccessDeniedException.class)
-                .hasFieldOrPropertyWithValue("errorCode", "MODULE_NOT_IN_PLAN");
-        assertThat(probe.attendance()).isEqualTo("attendance");
+        for (Role role : List.of(Role.SCHOOL_ADMIN, Role.TEACHER, Role.STUDENT)) {
+            authenticate(role, 7L);
+            assertThatThrownBy(() -> probe.read(7L))
+                    .isInstanceOf(ModuleAccessDeniedException.class)
+                    .hasFieldOrPropertyWithValue("errorCode", "MODULE_NOT_IN_PLAN");
+            assertThat(probe.attendance()).isEqualTo("attendance");
+        }
     }
 
     @Test
     void basicEntitlementsAllowTimetableAndAttendance() {
-        authenticate(Role.SCHOOL_ADMIN, 7L);
         when(access.entitlements(7L)).thenReturn(entitlements(
                 SubscriptionTier.BASIC, SubscriptionStatus.ACTIVE, true, List.of(ServiceModule.values())));
 
-        assertThat(probe.read(7L)).isEqualTo("visible");
-        assertThat(probe.attendance()).isEqualTo("attendance");
+        for (Role role : List.of(Role.SCHOOL_ADMIN, Role.TEACHER, Role.STUDENT)) {
+            authenticate(role, 7L);
+            assertThat(probe.read(7L)).isEqualTo("visible");
+            assertThat(probe.attendance()).isEqualTo("attendance");
+        }
     }
 
     @Test
@@ -96,10 +97,24 @@ class ModuleAccessAspectOrderTest {
         RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(request));
 
         assertThat(probe.read(7L)).isEqualTo("visible");
+        request.setMethod("HEAD");
+        assertThat(probe.read(7L)).isEqualTo("visible");
+        request.setMethod("OPTIONS");
+        assertThat(probe.read(7L)).isEqualTo("visible");
         request.setMethod("POST");
         assertThatThrownBy(() -> probe.read(7L))
                 .isInstanceOf(ModuleAccessDeniedException.class)
                 .hasFieldOrPropertyWithValue("errorCode", "SUBSCRIPTION_EXPIRED");
+    }
+
+    @Test
+    void schoolUserCannotSelectAnotherSchoolsEntitlements() {
+        authenticate(Role.SCHOOL_ADMIN, 7L);
+
+        assertThatThrownBy(() -> probe.read(8L))
+                .isInstanceOf(ModuleAccessDeniedException.class)
+                .hasFieldOrPropertyWithValue("errorCode", "RESOURCE_NOT_FOUND");
+        verifyNoInteractions(access);
     }
 
     @Test
@@ -162,13 +177,13 @@ class ModuleAccessAspectOrderTest {
         }
 
         @RequiresModule(ServiceModule.TIMETABLE)
-        @PreAuthorize("hasRole('SUPER_ADMIN') or hasRole('SCHOOL_ADMIN')")
+        @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER', 'STUDENT')")
         public String read(@RequestParam("schoolId") Long schoolId) {
             return "visible";
         }
 
         @RequiresModule(ServiceModule.ATTENDANCE)
-        @PreAuthorize("hasAnyRole('SCHOOL_ADMIN', 'TEACHER')")
+        @PreAuthorize("hasAnyRole('SCHOOL_ADMIN', 'TEACHER', 'STUDENT')")
         public String attendance() {
             return "attendance";
         }
