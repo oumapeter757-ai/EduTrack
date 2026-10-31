@@ -23,6 +23,8 @@ import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.dao.DataIntegrityViolationException;
 import com.peterscode.edutrack.security.ModuleAccessDeniedException;
 import com.peterscode.edutrack.attendance.exception.AttendanceRuleException;
+import com.peterscode.edutrack.grading.exception.GradingEx;
+import com.peterscode.edutrack.examination.exception.ExaminationRuleException;
 import com.peterscode.edutrack.student.exception.StudentRequestException;
 import com.peterscode.edutrack.security.PlanLimitReachedException;
 import com.peterscode.edutrack.timetable.exception.TimetableRuleException;
@@ -101,6 +103,20 @@ public class GlobalExceptionHandler {
         String message = ex.getErrorCode() != null && ex.getErrorCode().startsWith("RESOURCE_NOT_FOUND")
                 ? "Resource not found" : ex.getMessage();
         return ResponseEntity.status(ex.getStatus()).body(ApiResponse.error(message, ex.getErrorCode()));
+    }
+
+    @ExceptionHandler(GradingEx.class)
+    public ResponseEntity<ApiResponse<Void>> handleGradingRule(GradingEx ex) {
+        String message = ex.getErrorCode() != null && ex.getErrorCode().startsWith("RESOURCE_NOT_FOUND")
+                ? "Resource not found" : ex.getMessage();
+        return ResponseEntity.status(ex.getStatus()).body(ApiResponse.error(message, ex.getErrorCode()));
+    }
+
+    @ExceptionHandler(ExaminationRuleException.class)
+    public ResponseEntity<ApiResponse<Void>> handleExaminationRule(ExaminationRuleException ex) {
+        String message = ex.getErrorCode() != null && ex.getErrorCode().startsWith("RESOURCE_NOT_FOUND")
+                ? "Resource not found" : ex.getMessage();
+        return ResponseEntity.status(ex.getHttpStatus()).body(ApiResponse.error(message, ex.getErrorCode()));
     }
 
     @ExceptionHandler(AuthenticationException.class)
