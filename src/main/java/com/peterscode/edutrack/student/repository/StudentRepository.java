@@ -39,6 +39,10 @@ public interface StudentRepository extends JpaRepository<Student, Long>, JpaSpec
 
     long countBySchoolIdAndActiveFalse(Long schoolId);
 
+    long countBySchoolIdAndStreamIdAndActiveTrue(Long schoolId, Long streamId);
+
+    List<Student> findBySchoolIdAndStreamIdAndActiveTrueOrderByFirstNameAscLastNameAsc(Long schoolId, Long streamId);
+
     long countBySchoolIdAndStatus(Long schoolId, StudentStatus status);
 
     long countBySchoolIdAndGender(Long schoolId, Gender gender);

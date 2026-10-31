@@ -15,6 +15,8 @@ public interface ClassLevelRepository extends JpaRepository<ClassLevel, Long>, J
 
     Page<ClassLevel> findBySchoolId(Long schoolId, Pageable pageable);
 
+    Optional<ClassLevel> findBySchoolIdAndId(Long schoolId, Long id);
+
     List<ClassLevel> findBySchoolIdAndActiveTrueOrderBySortOrderAsc(Long schoolId);
 
     Optional<ClassLevel> findBySchoolIdAndCode(Long schoolId, String code);

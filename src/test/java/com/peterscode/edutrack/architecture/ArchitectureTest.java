@@ -20,4 +20,15 @@ public class ArchitectureTest {
     public static final ArchRule services_should_be_in_service_packages = classes()
             .that().haveSimpleNameEndingWith("ServiceImpl")
             .should().resideInAPackage("..service..");
+
+    @ArchTest
+    public static final ArchRule repositories_should_be_interfaces_and_in_repository_packages = classes()
+            .that().haveSimpleNameEndingWith("Repository")
+            .should().beInterfaces()
+            .andShould().resideInAnyPackage("..repository..", "..audit..");
+
+    @ArchTest
+    public static final ArchRule services_should_not_access_controllers = com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses()
+            .that().resideInAPackage("..service..")
+            .should().accessClassesThat().resideInAPackage("..controller..");
 }

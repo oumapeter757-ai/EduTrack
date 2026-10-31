@@ -13,13 +13,12 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
-import com.peterscode.edutrack.security.RequiresModule;
-import com.peterscode.edutrack.school.enums.ServiceModule;
+import com.peterscode.edutrack.security.NoModuleRequired;
 
 import java.util.List;
 
 @RestController
-@RequiresModule(ServiceModule.GRADING)
+@NoModuleRequired
 @RequestMapping("/api/v1/subjects")
 @RequiredArgsConstructor
 public class SubjectController {
@@ -37,7 +36,7 @@ public class SubjectController {
     }
 
     @GetMapping
-    @PreAuthorize("hasRole('SUPER_ADMIN') or hasAnyRole('SCHOOL_ADMIN', 'TEACHER')")
+    @PreAuthorize("hasRole('SUPER_ADMIN') or hasRole('SCHOOL_ADMIN')")
     public ResponseEntity<ApiResponse<PageResponse<SubjectResponseDto>>> getSubjects(
             @RequestParam(required = false) Long schoolId,
             @RequestParam(required = false) Long classLevelId,
@@ -49,7 +48,7 @@ public class SubjectController {
     }
 
     @GetMapping("/active")
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasRole('SUPER_ADMIN') or hasRole('SCHOOL_ADMIN')")
     public ResponseEntity<ApiResponse<List<SubjectSummaryDto>>> getActiveSubjects(
             @RequestParam(required = false) Long schoolId,
             @AuthenticationPrincipal UserPrincipal principal) {
@@ -58,7 +57,7 @@ public class SubjectController {
     }
 
     @GetMapping("/class-level/{classLevelId}")
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasRole('SUPER_ADMIN') or hasRole('SCHOOL_ADMIN')")
     public ResponseEntity<ApiResponse<List<SubjectResponseDto>>> getSubjectsByClassLevel(
             @PathVariable Long classLevelId,
             @AuthenticationPrincipal UserPrincipal principal) {
@@ -67,7 +66,7 @@ public class SubjectController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasRole('SUPER_ADMIN') or hasRole('SCHOOL_ADMIN')")
     public ResponseEntity<ApiResponse<SubjectResponseDto>> getSubjectById(
             @PathVariable Long id,
             @AuthenticationPrincipal UserPrincipal principal) {

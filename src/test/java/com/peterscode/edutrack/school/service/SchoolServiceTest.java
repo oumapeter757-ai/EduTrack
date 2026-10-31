@@ -229,7 +229,8 @@ class SchoolServiceTest {
         assertThat(response).isNotNull();
         assertThat(response.getSubscriptionTier()).isEqualTo(SubscriptionTier.ENTERPRISE);
         assertThat(response.getMaxStudents()).isEqualTo(5000);
-        assertThat(response.getEnabledModules()).contains(ServiceModule.LMS, ServiceModule.TRANSPORT);
+        assertThat(response.getEnabledModules())
+                .containsExactlyInAnyOrderElementsOf(ServiceModule.getDefaultModulesForTier(SubscriptionTier.ENTERPRISE));
     }
 
     @Test

@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.method.HandlerMethod;
 import org.springframework.web.servlet.mvc.method.RequestMappingInfo;
 import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 import java.lang.reflect.Method;
 import java.util.Map;
@@ -37,8 +38,16 @@ class ControllerAnnotationValidatorTest {
     @RestController
     @NoModuleRequired
     static class ValidNoModuleAnnotatedController {
+        @PreAuthorize("isAuthenticated()")
         @GetMapping("/test3")
         public String endpoint3() { return "ok"; }
+    }
+
+    @RestController
+    @NoModuleRequired
+    static class UngatedWithoutRoleController {
+        @GetMapping("/unguarded")
+        public String endpoint() { return "fail"; }
     }
 
     @RestController
@@ -89,5 +98,22 @@ class ControllerAnnotationValidatorTest {
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("Controller endpoint must declare module access")
                 .hasMessageContaining("InvalidUnannotatedController#unannotatedEndpoint");
+    }
+
+    @Test
+    @DisplayName("An explicitly ungated controller must still protect every handler with PreAuthorize")
+    void testValidationFailsWhenUngatedHandlerHasNoPreAuthorize() throws Exception {
+        RequestMappingHandlerMapping mappings = mock(RequestMappingHandlerMapping.class);
+        UngatedWithoutRoleController controller = new UngatedWithoutRoleController();
+        Method method = UngatedWithoutRoleController.class.getMethod("endpoint");
+        when(mappings.getHandlerMethods()).thenReturn(Map.of(
+                mock(RequestMappingInfo.class), new HandlerMethod(controller, method)));
+
+        ControllerAnnotationValidator validator = new ControllerAnnotationValidator(mappings);
+
+        assertThatThrownBy(validator::afterSingletonsInstantiated)
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("NoModuleRequired")
+                .hasMessageContaining("PreAuthorize");
     }
 }

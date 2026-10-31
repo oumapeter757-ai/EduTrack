@@ -23,6 +23,7 @@ public class SubjectResponseDto {
     private String description;
     private String department;
     private Integer creditHours;
+    private String requiredRoomType;
 
     @JsonProperty("isElective")
     private boolean isElective;

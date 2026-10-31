@@ -44,6 +44,7 @@ public class UserManagementController {
      * SUPER_ADMIN creates another SUPER_ADMIN.
      */
     @PostMapping("/super-admins")
+    @NoModuleRequired
     @PreAuthorize("hasRole('SUPER_ADMIN')")
     public ResponseEntity<ApiResponse<UserResponseDto>> createSuperAdmin(
             @Valid @RequestBody CreateSuperAdminRequestDto request,

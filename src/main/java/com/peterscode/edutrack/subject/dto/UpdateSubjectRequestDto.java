@@ -35,6 +35,9 @@ public class UpdateSubjectRequestDto {
     @Positive(message = "Credit hours must be positive")
     private Integer creditHours;
 
+    @Pattern(regexp = "^(CLASSROOM|LAB|HALL|FIELD)$", message = "Required room type must be CLASSROOM, LAB, HALL, or FIELD")
+    private String requiredRoomType;
+
     @JsonProperty("isElective")
     private Boolean isElective;
 

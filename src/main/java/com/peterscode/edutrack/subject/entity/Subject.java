@@ -55,6 +55,9 @@ public class Subject extends BaseEntity {
     @Builder.Default
     private boolean active = true;
 
+    @Column(name = "required_room_type", length = 32)
+    private String requiredRoomType;
+
     public boolean isElective() {
         return isElective;
     }

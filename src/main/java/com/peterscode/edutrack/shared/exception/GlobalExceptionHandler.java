@@ -22,8 +22,10 @@ import jakarta.persistence.OptimisticLockException;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.dao.DataIntegrityViolationException;
 import com.peterscode.edutrack.security.ModuleAccessDeniedException;
+import com.peterscode.edutrack.attendance.exception.AttendanceRuleException;
 import com.peterscode.edutrack.student.exception.StudentRequestException;
 import com.peterscode.edutrack.security.PlanLimitReachedException;
+import com.peterscode.edutrack.timetable.exception.TimetableRuleException;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.authentication.LockedException;
@@ -37,7 +39,7 @@ import java.util.regex.Pattern;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
     private static final Pattern CONSTRAINT_PATTERN = Pattern.compile(
-            "(?:[\\w]+\\.)?((?:uk_student_school_email|uk_student_user_id|uk_student_school_admission|chk_school_max_students_positive|chk_school_max_teachers_positive))",
+            "(?:[\\w]+\\.)?((?:uk_student_school_email|uk_student_user_id|uk_student_school_admission|chk_school_max_students_positive|chk_school_max_teachers_positive|uk_lesson_stream_slot|uk_lesson_teacher_slot|uk_lesson_room_slot|uk_stream_subject_year|uk_class_level_subject|uk_timetable_school_term|uk_attendance_school_student_date_scope))",
             Pattern.CASE_INSENSITIVE);
 
     @ExceptionHandler(ResourceNotFoundException.class)
@@ -79,10 +81,22 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiResponse<Void>> handleModuleDenied(ModuleAccessDeniedException ex) {
         log.info("Module denial schoolId={},userId={},module={},errorCode={}",
                 ex.getSchoolId(), ex.getUserId(), ex.getModule(), ex.getErrorCode());
-        HttpStatus status = "SUBSCRIPTION_EXPIRED".equals(ex.getErrorCode())
-                ? HttpStatus.PAYMENT_REQUIRED
-                : HttpStatus.FORBIDDEN;
+        HttpStatus status = switch (ex.getErrorCode()) {
+            case "SUBSCRIPTION_EXPIRED" -> HttpStatus.PAYMENT_REQUIRED;
+            case "RESOURCE_NOT_FOUND" -> HttpStatus.NOT_FOUND;
+            default -> HttpStatus.FORBIDDEN;
+        };
         return ResponseEntity.status(status).body(ApiResponse.error(ex.getMessage(), ex.getErrorCode()));
+    }
+
+    @ExceptionHandler(TimetableRuleException.class)
+    public ResponseEntity<ApiResponse<Void>> handleTimetableRule(TimetableRuleException ex) {
+        return ResponseEntity.status(ex.getStatus()).body(ApiResponse.error(ex.getMessage(), ex.getErrorCode()));
+    }
+
+    @ExceptionHandler(AttendanceRuleException.class)
+    public ResponseEntity<ApiResponse<Void>> handleAttendanceRule(AttendanceRuleException ex) {
+        return ResponseEntity.status(ex.getStatus()).body(ApiResponse.error(ex.getMessage(), ex.getErrorCode()));
     }
 
     @ExceptionHandler(AuthenticationException.class)
@@ -193,6 +207,25 @@ public class GlobalExceptionHandler {
         }
         if ("chk_school_max_teachers_positive".equalsIgnoreCase(constraint)) {
             return ResponseEntity.badRequest().body(ApiResponse.error("Maximum teachers must be greater than 0"));
+        }
+        if ("uk_lesson_stream_slot".equalsIgnoreCase(constraint)) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(ApiResponse.error("Stream already has a lesson in this period", "STREAM_CLASH"));
+        }
+        if ("uk_lesson_teacher_slot".equalsIgnoreCase(constraint)) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(ApiResponse.error("Teacher already has a lesson in this period", "TEACHER_CLASH"));
+        }
+        if ("uk_lesson_room_slot".equalsIgnoreCase(constraint)) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(ApiResponse.error("Room is already booked in this period", "ROOM_CLASH"));
+        }
+        if ("uk_stream_subject_year".equalsIgnoreCase(constraint)) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(ApiResponse.error("Stream subject already exists for this academic year", "ASSIGNMENT_EXISTS"));
+        }
+        if ("uk_class_level_subject".equalsIgnoreCase(constraint)) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(ApiResponse.error("Curriculum subject already exists", "CURRICULUM_EXISTS"));
+        }
+        if ("uk_attendance_school_student_date_scope".equalsIgnoreCase(constraint)) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(ApiResponse.error("Attendance already exists for this student and session", "ATTENDANCE_DUPLICATE"));
         }
         log.warn("Data integrity conflict: {}", ex.getClass().getSimpleName());
         return ResponseEntity.status(HttpStatus.CONFLICT)

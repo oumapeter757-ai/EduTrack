@@ -2,8 +2,6 @@ package com.peterscode.edutrack.security.jwt;
 
 import com.peterscode.edutrack.security.UserPrincipal;
 import com.peterscode.edutrack.security.service.CustomUserDetailsService;
-import com.peterscode.edutrack.security.ModuleAccessService;
-import com.peterscode.edutrack.user.entity.Role;
 import io.jsonwebtoken.ExpiredJwtException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -26,7 +24,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
     private final CustomUserDetailsService userDetailsService;
-    private final ModuleAccessService moduleAccessService;
 
     @Override
     protected void doFilterInternal(
@@ -60,8 +57,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 if (jwtService.isTokenValid(jwt, userDetails)
                         && userDetails.isEnabled()
                         && userDetails.isAccountNonLocked()
-                        && (userDetails instanceof UserPrincipal p
-                        && (p.getRole() == Role.SUPER_ADMIN || moduleAccessService.isSchoolActive(p.getSchoolId())))) {
+                        && userDetails instanceof UserPrincipal) {
                     UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
                             userDetails,
                             null,

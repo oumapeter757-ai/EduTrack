@@ -189,7 +189,7 @@ public class SchoolServiceImpl implements SchoolService {
         }
         // Service is authoritative for tier/status/dates/limits/modules.
         // Mapper only applies DTO overrides for maxStudents/maxTeachers/enabledModules (A7).
-        if (requestDto.getEnabledModules() != null) {
+        if (!tierChanged && requestDto.getEnabledModules() != null) {
             existing.setEnabledModules(enumSet(requestDto.getEnabledModules()));
         }
         if (requestDto.getMaxStudents() != null) {

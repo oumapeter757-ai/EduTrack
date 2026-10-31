@@ -7,10 +7,12 @@ import com.peterscode.edutrack.school.enums.*;
 import com.peterscode.edutrack.school.repository.SchoolRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.time.*;
+import java.time.temporal.ChronoUnit;
 import java.util.concurrent.TimeUnit;
 
 @Slf4j
@@ -20,75 +22,82 @@ public class ModuleAccessService {
     private final SchoolRepository schools;
     private final SecurityUtils security;
     private final Clock clock;
-    private final Cache<Long, SchoolEntitlements> cache = Caffeine.newBuilder()
+    private final Cache<Long, EntitlementSnapshot> cache = Caffeine.newBuilder()
             .maximumSize(10_000).expireAfterWrite(30, TimeUnit.SECONDS).build();
     @Value("${edutrack.subscription.grace-days:14}") private int graceDays;
 
-    public SchoolEntitlements entitlements(Long schoolId) {
-        if (schoolId == null) throw new ModuleAccessDeniedException(null, currentUser(), null, "SCHOOL_REQUIRED", "School context is required");
-        return cache.get(schoolId, this::load);
+    @PostConstruct
+    void validateGraceDays() {
+        if (graceDays < 0) {
+            throw new IllegalStateException("Subscription grace days must be non-negative");
+        }
     }
 
-    private SchoolEntitlements load(Long id) {
+    public SchoolEntitlements entitlements(Long schoolId) {
+        if (schoolId == null) {
+            throw denied(null, null, "ACCESS_DENIED", "School context is required");
+        }
+        EntitlementSnapshot snapshot = cache.get(schoolId, this::load);
+        LocalDate today = LocalDate.now(clock.withZone(snapshot.timezone()));
+        SubscriptionStatus status = effectiveStatus(snapshot, today);
+        long daysLeft = computeDaysLeft(snapshot, status, today);
+        return new SchoolEntitlements(snapshot.schoolId(), snapshot.tier(), status, snapshot.endDate(),
+                snapshot.timezone(), snapshot.enabledModules(),
+                ServiceModule.getDefaultModulesForTier(snapshot.tier()), snapshot.active(), daysLeft);
+    }
+
+    private EntitlementSnapshot load(Long id) {
         School s = schools.findById(id).orElseThrow(() ->
-                new ModuleAccessDeniedException(id, currentUser(), null, "SCHOOL_NOT_FOUND", "School not found"));
+                denied(id, null, "ACCESS_DENIED", "School access is unavailable"));
         ZoneId zone;
         try {
             zone = ZoneId.of(s.getTimezone());
-        } catch (DateTimeException | NullPointerException e) {
-            throw new ModuleAccessDeniedException(id, currentUser(), null,
-                    "ACCESS_DENIED", "Subscription access is unavailable");
+        } catch (DateTimeException | NullPointerException exception) {
+            throw denied(id, null, "ACCESS_DENIED", "Subscription access is unavailable");
         }
-        LocalDate today = LocalDate.now(clock.withZone(zone));
-        SubscriptionStatus effectiveStatus = effectiveStatus(s, today);
-        long daysLeft = computeDaysLeft(s, effectiveStatus, today);
-        return new SchoolEntitlements(id, s.getSubscriptionTier(), effectiveStatus,
-                s.getSubscriptionEndDate(), zone, s.getEnabledModules(),
-                ServiceModule.getDefaultModulesForTier(s.getSubscriptionTier()), s.isActive(), daysLeft);
+        if (s.getSubscriptionTier() == null) {
+            throw denied(id, null, "ACCESS_DENIED", "Subscription access is unavailable");
+        }
+        return new EntitlementSnapshot(id, s.getSubscriptionTier(), s.getSubscriptionStatus(),
+                s.getSubscriptionStartDate(), s.getSubscriptionEndDate(), zone,
+                s.getEnabledModules(), s.isActive());
     }
 
-    /**
-     * Derives the effective subscription status from stored status + dates, respecting the
-     * project-wide INCLUSIVE end-date rule (SubscriptionTermsResolver Javadoc).
-     *
-     * <p>Preserves SUSPENDED and CANCELLED. Preserves TRIAL until its end date (then EXPIRED).
-     * Warns on a null stored status for a non-FREE school (treated as EXPIRED).
-     */
-    private SubscriptionStatus effectiveStatus(School s, LocalDate today) {
-        if (!s.isActive() || s.getSubscriptionStatus() == SubscriptionStatus.SUSPENDED ||
-                s.getSubscriptionStatus() == SubscriptionStatus.CANCELLED) return s.getSubscriptionStatus();
-        if (s.getSubscriptionTier() == SubscriptionTier.FREE && s.getSubscriptionEndDate() == null) {
+    private SubscriptionStatus effectiveStatus(EntitlementSnapshot snapshot, LocalDate today) {
+        SubscriptionStatus stored = snapshot.storedStatus();
+        if (stored == null) {
+            return null;
+        }
+        if (stored == SubscriptionStatus.SUSPENDED || stored == SubscriptionStatus.CANCELLED) {
+            return stored;
+        }
+        if (snapshot.tier() == SubscriptionTier.FREE) {
             return SubscriptionStatus.ACTIVE;
         }
-        LocalDate end = s.getSubscriptionEndDate();
-        SubscriptionStatus stored = s.getSubscriptionStatus();
-        if (stored == null && s.getSubscriptionTier() != SubscriptionTier.FREE) {
-            log.warn("School id={} has non-FREE tier={} but a null stored subscription status; treating as EXPIRED",
-                    s.getId(), s.getSubscriptionTier());
+        if (stored == SubscriptionStatus.EXPIRED || snapshot.endDate() == null) {
+            return SubscriptionStatus.EXPIRED;
         }
-        if (end == null) return SubscriptionStatus.EXPIRED;
+        LocalDate end = snapshot.endDate();
         if (stored == SubscriptionStatus.TRIAL) {
-            // Preserve TRIAL until its end date; after that fall through to EXPIRED (no GRACE for trials).
             return today.isAfter(end) ? SubscriptionStatus.EXPIRED : SubscriptionStatus.TRIAL;
         }
-        if (!today.isAfter(end)) return SubscriptionStatus.ACTIVE;
-        if (!today.isAfter(end.plusDays(Math.max(0, graceDays)))) return SubscriptionStatus.GRACE;
+        if (!today.isAfter(end)) {
+            return SubscriptionStatus.ACTIVE;
+        }
+        if (!today.isAfter(end.plusDays(graceDays))) {
+            return SubscriptionStatus.GRACE;
+        }
         return SubscriptionStatus.EXPIRED;
     }
 
-    /**
-     * Days remaining on the subscription, inclusive of the end date and in the school's timezone.
-     * - ACTIVE / TRIAL: days until end date (>= 0).
-     * - GRACE: days until end-of-grace window.
-     * - Otherwise: 0.
-     */
-    private long computeDaysLeft(School s, SubscriptionStatus effective, LocalDate today) {
-        LocalDate end = s.getSubscriptionEndDate();
-        if (end == null) return 0;
+    private long computeDaysLeft(EntitlementSnapshot snapshot, SubscriptionStatus effective, LocalDate today) {
+        LocalDate end = snapshot.endDate();
+        if (end == null || effective == null) {
+            return 0;
+        }
         return switch (effective) {
-            case ACTIVE, TRIAL -> Math.max(0, java.time.temporal.ChronoUnit.DAYS.between(today, end));
-            case GRACE -> Math.max(0, java.time.temporal.ChronoUnit.DAYS.between(
-                    today, end.plusDays(Math.max(0, graceDays))));
+            case ACTIVE, TRIAL -> Math.max(0, ChronoUnit.DAYS.between(today, end));
+            case GRACE -> Math.max(0, ChronoUnit.DAYS.between(today, end.plusDays(graceDays)));
             default -> 0L;
         };
     }
@@ -97,37 +106,49 @@ public class ModuleAccessService {
     public boolean isSchoolActive(Long schoolId) {
         if (schoolId == null) return false;
         try {
-            return cache.get(schoolId, this::load).active();
+            return entitlements(schoolId).active();
         } catch (RuntimeException ex) {
             log.debug("Unable to resolve school activity for {}", schoolId);
             return false;
         }
     }
-    public void assertModuleEnabled(Long schoolId, com.peterscode.edutrack.school.enums.ServiceModule module) {
+
+    public void assertModuleEnabled(Long schoolId, ServiceModule module) {
         if (schoolId == null) {
-            throw new ModuleAccessDeniedException(null, currentUser(), module == null ? null : module.name(),
-                    "SCHOOL_REQUIRED", "School context is required");
+            throw denied(null, module, "ACCESS_DENIED", "School context is required");
         }
         if (module == null) {
-            return;
+            throw denied(schoolId, null, "ACCESS_DENIED", "Subscription access is unavailable");
         }
         SchoolEntitlements e = entitlements(schoolId);
         if (!e.active()) {
-            throw new ModuleAccessDeniedException(schoolId, currentUser(), module.name(),
-                    "SCHOOL_INACTIVE", "School is inactive");
+            throw denied(schoolId, module, "SCHOOL_INACTIVE", "School is inactive");
         }
         SubscriptionStatus st = e.status();
-        if (st == SubscriptionStatus.SUSPENDED || st == SubscriptionStatus.CANCELLED) {
-            throw new ModuleAccessDeniedException(schoolId, currentUser(), module.name(),
-                    "ACCESS_DENIED", "Subscription is " + st.name().toLowerCase());
+        if (st == SubscriptionStatus.EXPIRED) {
+            throw denied(schoolId, module, "SUBSCRIPTION_EXPIRED", "Subscription has expired");
+        }
+        if (st == null || st == SubscriptionStatus.SUSPENDED || st == SubscriptionStatus.CANCELLED) {
+            throw denied(schoolId, module, "ACCESS_DENIED", "Subscription access is denied");
         }
         if (!e.hasModule(module)) {
-            throw new ModuleAccessDeniedException(schoolId, currentUser(), module.name(),
-                    "MODULE_NOT_IN_PLAN", "Module is not entitled for school plan");
+            throw denied(schoolId, module, "MODULE_NOT_IN_PLAN", "Module is not enabled");
         }
     }
 
     public void clear() { cache.invalidateAll(); }
     public long estimatedSize() { return cache.estimatedSize(); }
     private Long currentUser() { var p = security.getCurrentPrincipal(); return p == null ? null : p.getId(); }
+
+    private ModuleAccessDeniedException denied(Long schoolId, ServiceModule module, String code, String message) {
+        return new ModuleAccessDeniedException(schoolId, currentUser(), module == null ? null : module.name(), code, message);
+    }
+
+    private record EntitlementSnapshot(Long schoolId, SubscriptionTier tier, SubscriptionStatus storedStatus,
+            LocalDate startDate, LocalDate endDate, ZoneId timezone,
+            java.util.Set<ServiceModule> enabledModules, boolean active) {
+        private EntitlementSnapshot {
+            enabledModules = enabledModules == null ? java.util.Set.of() : java.util.Set.copyOf(enabledModules);
+        }
+    }
 }

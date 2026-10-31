@@ -6,7 +6,9 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.jpa.repository.*;
 
 public interface StaffRepository extends JpaRepository<Staff, Long> {
-  Optional<Staff> findByIdAndSchoolId(Long id, Long schoolId);
+  Optional<Staff> findBySchoolIdAndId(Long schoolId, Long id);
+
+  Optional<Staff> findBySchoolIdAndUserId(Long schoolId, Long userId);
 
   Page<Staff> findBySchoolId(Long schoolId, org.springframework.data.domain.Pageable p);
 

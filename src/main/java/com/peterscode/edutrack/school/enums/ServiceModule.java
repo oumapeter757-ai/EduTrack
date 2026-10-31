@@ -3,10 +3,7 @@ package com.peterscode.edutrack.school.enums;
 import java.util.EnumSet;
 import java.util.Set;
 
-/**
- * Service modules available across the EduTrack enterprise platform.
- * Schools have granular entitlements enabling specific services.
- */
+
 public enum ServiceModule {
     STUDENT_MANAGEMENT,
     TEACHER_MANAGEMENT,
@@ -21,9 +18,7 @@ public enum ServiceModule {
     NOTIFICATIONS,
     REPORTS;
 
-    /**
-     * Default service modules provided for each tier.
-     */
+
     public static Set<ServiceModule> getDefaultModulesForTier(SubscriptionTier tier) {
         if (tier == null) {
             return EnumSet.of(STUDENT_MANAGEMENT, TEACHER_MANAGEMENT, ATTENDANCE);

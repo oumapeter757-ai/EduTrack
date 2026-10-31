@@ -23,6 +23,7 @@ public class SubjectMapper {
                 .description(dto.getDescription() != null ? dto.getDescription().trim() : null)
                 .department(dto.getDepartment() != null ? dto.getDepartment().trim() : null)
                 .creditHours(dto.getCreditHours())
+                .requiredRoomType(dto.getRequiredRoomType())
                 .isElective(Boolean.TRUE.equals(dto.getIsElective()))
                 .active(true)
                 .build();
@@ -47,6 +48,7 @@ public class SubjectMapper {
                 .description(subject.getDescription())
                 .department(subject.getDepartment())
                 .creditHours(subject.getCreditHours())
+                .requiredRoomType(subject.getRequiredRoomType())
                 .isElective(subject.isElective())
                 .active(subject.isActive())
                 .createdAt(subject.getCreatedAt())
@@ -91,6 +93,9 @@ public class SubjectMapper {
         }
         if (dto.getCreditHours() != null) {
             subject.setCreditHours(dto.getCreditHours());
+        }
+        if (dto.getRequiredRoomType() != null) {
+            subject.setRequiredRoomType(dto.getRequiredRoomType());
         }
         if (dto.getIsElective() != null) {
             subject.setIsElective(dto.getIsElective());
