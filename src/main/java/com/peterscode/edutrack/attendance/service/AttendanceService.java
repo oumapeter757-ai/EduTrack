@@ -37,6 +37,10 @@ import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
+import com.peterscode.edutrack.school.enums.ServiceModule;
+import com.peterscode.edutrack.security.ModuleAccessService;
+import com.peterscode.edutrack.timetable.repository.StreamSubjectRepository;
+import java.time.Clock;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -52,19 +56,25 @@ public class AttendanceService {
     private final TimetableRepository timetableRepository;
     private final TimetableLessonRepository lessonRepository;
     private final StaffRepository staffRepository;
+    private final StreamSubjectRepository streamSubjectRepository;
+    private final ModuleAccessService moduleAccessService;
+    private final Clock clock;
 
     @Transactional
     public BatchResponse recordBatch(BatchRequest request, UserPrincipal principal) {
         Long schoolId = schoolId(request.schoolId(), principal);
         requireRecorder(principal);
+        if (request.attendanceType() == AttendanceType.PERIOD) {
+            moduleAccessService.assertModuleEnabled(schoolId, ServiceModule.TIMETABLE);
+        }
 
         Stream stream = streamRepository.findLockedBySchoolIdAndId(schoolId, request.streamId())
                 .filter(Stream::isActive)
                 .orElseThrow(() -> notFound("Stream not found"));
         Term term = requireTerm(schoolId, request.termId(), request.attendanceDate());
+        validateEditableDate(schoolId, request.attendanceDate(), principal);
         TimetableLesson lesson = validateScope(schoolId, stream, term, request.attendanceDate(),
                 request.attendanceType(), request.timetableLessonId(), principal, true);
-        validateEditableDate(schoolId, request.attendanceDate(), principal);
 
         List<Student> roster = studentRepository
                 .findBySchoolIdAndStreamIdAndActiveTrueOrderByFirstNameAscLastNameAsc(schoolId, stream.getId());
@@ -124,6 +134,9 @@ public class AttendanceService {
     public List<StudentAttendanceView> streamAttendance(StreamQuery query, UserPrincipal principal) {
         Long schoolId = schoolId(query.schoolId(), principal);
         requireRecorder(principal);
+        if (query.attendanceType() == AttendanceType.PERIOD) {
+            moduleAccessService.assertModuleEnabled(schoolId, ServiceModule.TIMETABLE);
+        }
         Stream stream = streamRepository.findBySchoolIdAndId(schoolId, query.streamId())
                 .filter(Stream::isActive)
                 .orElseThrow(() -> notFound("Stream not found"));
@@ -197,8 +210,25 @@ public class AttendanceService {
             return;
         }
         Staff teacher = requireTeacher(schoolId, principal);
-        if (!lessonRepository.existsPublishedTeachingAssignment(schoolId, term.getId(), stream.getId(), teacher.getId())) {
-            throw forbidden("STREAM_NOT_ASSIGNED", "Teacher is not assigned to teach this stream in the active timetable");
+        boolean hasTimetable = isTimetableEnabled(schoolId);
+        if (hasTimetable) {
+            if (!lessonRepository.existsPublishedTeachingAssignment(schoolId, term.getId(), stream.getId(), teacher.getId())) {
+                throw forbidden("STREAM_NOT_ASSIGNED", "Teacher is not assigned to teach this stream in the active timetable");
+            }
+        } else {
+            if (!streamSubjectRepository.existsBySchoolIdAndTeacherIdAndStreamIdAndAcademicYearId(
+                    schoolId, teacher.getId(), stream.getId(), term.getAcademicYearId())) {
+                throw forbidden("STREAM_NOT_ASSIGNED", "Teacher is not assigned to teach this stream in the active academic year");
+            }
+        }
+    }
+
+    private boolean isTimetableEnabled(Long schoolId) {
+        try {
+            moduleAccessService.assertModuleEnabled(schoolId, ServiceModule.TIMETABLE);
+            return true;
+        } catch (RuntimeException ex) {
+            return false;
         }
     }
 
@@ -223,8 +253,15 @@ public class AttendanceService {
     }
 
     private void validateEditableDate(Long schoolId, LocalDate attendanceDate, UserPrincipal principal) {
-        if (!isAdmin(principal) && attendanceDate.isBefore(LocalDate.now(schoolZone(schoolId)))) {
+        if (isAdmin(principal)) {
+            return;
+        }
+        LocalDate today = LocalDate.now(clock.withZone(schoolZone(schoolId)));
+        if (attendanceDate.isBefore(today)) {
             throw forbidden("PAST_ATTENDANCE_LOCKED", "Only administrators may modify attendance for a past school day");
+        }
+        if (attendanceDate.isAfter(today)) {
+            throw forbidden("FUTURE_ATTENDANCE_LOCKED", "Attendance cannot be recorded for a future school day");
         }
     }
 

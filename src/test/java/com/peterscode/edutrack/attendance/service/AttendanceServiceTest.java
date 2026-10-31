@@ -29,9 +29,15 @@ import com.peterscode.edutrack.timetable.repository.TermRepository;
 import com.peterscode.edutrack.timetable.repository.TimetableLessonRepository;
 import com.peterscode.edutrack.timetable.repository.TimetableRepository;
 import com.peterscode.edutrack.user.entity.Role;
+import com.peterscode.edutrack.security.ModuleAccessService;
+import com.peterscode.edutrack.timetable.repository.StreamSubjectRepository;
+import java.time.Clock;
+import java.time.Instant;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Optional;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -48,11 +54,24 @@ class AttendanceServiceTest {
     @Mock private TimetableRepository timetableRepository;
     @Mock private TimetableLessonRepository lessonRepository;
     @Mock private StaffRepository staffRepository;
+    @Mock private StreamSubjectRepository streamSubjectRepository;
+    @Mock private ModuleAccessService moduleAccessService;
+    @Mock private Clock clock;
     @InjectMocks private AttendanceService service;
+
+    private final Clock fixedClock = Clock.fixed(Instant.parse("2026-10-31T08:00:00Z"), ZoneId.of("UTC"));
+    private final LocalDate today = LocalDate.now(fixedClock);
+
+    @BeforeEach
+    void setUp() {
+        lenient().when(clock.getZone()).thenReturn(ZoneId.of("UTC"));
+        lenient().when(clock.instant()).thenReturn(Instant.parse("2026-10-31T08:00:00Z"));
+        lenient().when(clock.withZone(any())).thenReturn(fixedClock);
+        lenient().when(schoolRepository.findById(any())).thenReturn(Optional.of(School.builder().timezone("UTC").build()));
+    }
 
     @Test
     void recordBatchDefaultsUnmentionedStudentsToPresentAndUpdatesWholeRoster() {
-        LocalDate today = LocalDate.now();
         UserPrincipal principal = principal(Role.SCHOOL_ADMIN, 1L, 11L);
         Stream stream = Stream.builder().schoolId(1L).active(true).build();
         stream.setId(21L);
@@ -104,7 +123,6 @@ class AttendanceServiceTest {
 
     @Test
     void teacherCannotRecordPeriodAttendanceForAnotherTeachersLesson() {
-        LocalDate today = LocalDate.now();
         UserPrincipal principal = principal(Role.TEACHER, 1L, 100L);
         Stream stream = Stream.builder().schoolId(1L).active(true).build();
         stream.setId(21L);

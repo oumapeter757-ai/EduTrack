@@ -12,6 +12,7 @@ public interface StreamSubjectRepository extends JpaRepository<StreamSubject, Lo
     List<StreamSubject> findBySchoolIdAndAcademicYearId(Long schoolId, Long academicYearId);
     Optional<StreamSubject> findBySchoolIdAndId(Long schoolId, Long id);
     boolean existsBySchoolIdAndStreamIdAndSubjectIdAndAcademicYearId(Long schoolId, Long streamId, Long subjectId, Long academicYearId);
+    boolean existsBySchoolIdAndTeacherIdAndStreamIdAndAcademicYearId(Long schoolId, Long teacherId, Long streamId, Long academicYearId);
     long countBySchoolIdAndTeacherIdAndAcademicYearId(Long schoolId, Long teacherId, Long academicYearId);
 
     @Query("select coalesce(sum(s.lessonsPerWeek), 0) from StreamSubject s where s.schoolId = :school and s.teacherId = :teacher and s.academicYearId = :year and (:excludeId is null or s.id <> :excludeId)")
