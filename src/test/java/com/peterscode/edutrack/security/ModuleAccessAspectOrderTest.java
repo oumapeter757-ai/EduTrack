@@ -113,7 +113,7 @@ class ModuleAccessAspectOrderTest {
 
         assertThatThrownBy(() -> probe.read(8L))
                 .isInstanceOf(ModuleAccessDeniedException.class)
-                .hasFieldOrPropertyWithValue("errorCode", "RESOURCE_NOT_FOUND");
+                .hasFieldOrPropertyWithValue("errorCode", "ACCESS_DENIED");
         verifyNoInteractions(access);
     }
 

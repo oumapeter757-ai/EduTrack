@@ -21,11 +21,14 @@ import com.peterscode.edutrack.timetable.dto.TimetableViews.*;
 import com.peterscode.edutrack.timetable.entity.*;
 import com.peterscode.edutrack.timetable.entity.Period.PeriodType;
 import com.peterscode.edutrack.timetable.entity.Timetable.TimetableStatus;
+import com.peterscode.edutrack.timetable.event.TimetablePublishedEvent;
 import com.peterscode.edutrack.timetable.exception.TimetableRuleException;
 import com.peterscode.edutrack.timetable.repository.*;
 import com.peterscode.edutrack.user.entity.Role;
 import com.peterscode.edutrack.user.entity.User;
 import com.peterscode.edutrack.user.repository.UserRepository;
+import com.peterscode.edutrack.attendance.repository.StudentAttendanceRepository;
+import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -57,6 +60,8 @@ public class TimetableService {
     private final TimetableLessonRepository lessonRepository;
     private final TimetableAuditRepository auditRepository;
     private final ApplicationEventPublisher events;
+    private final StudentAttendanceRepository attendanceRepository;
+    private final Clock clock;
 
     @Value("${edutrack.timetable.max-teacher-weekly-lessons:30}")
     private int maxTeacherWeeklyLessons;
@@ -91,6 +96,23 @@ public class TimetableService {
         return termView(saved);
     }
 
+    @Transactional(readOnly = true)
+    public List<TermView> terms(Long academicYearId, Long explicitSchoolId, UserPrincipal principal) {
+        Long schoolId = schoolId(explicitSchoolId, principal);
+        return (academicYearId == null
+                ? termRepository.findBySchoolIdOrderByStartDateAsc(schoolId)
+                : termRepository.findBySchoolIdAndAcademicYearIdOrderByStartDateAsc(schoolId, academicYearId))
+                .stream().map(this::termView).toList();
+    }
+
+    @Transactional(readOnly = true)
+    public TermView term(Long id, Long explicitSchoolId, UserPrincipal principal) {
+        Long schoolId = schoolId(explicitSchoolId, principal);
+        return termRepository.findBySchoolIdAndId(schoolId, id)
+                .map(this::termView)
+                .orElseThrow(() -> notFound("Term not found"));
+    }
+
     @Transactional
     public PeriodView savePeriod(Long id, PeriodRequest request, UserPrincipal principal) {
         Long schoolId = schoolId(request.schoolId(), principal);
@@ -105,6 +127,9 @@ public class TimetableService {
                 .orElseThrow(() -> notFound("Period not found"));
         if (!request.active() && period.getId() != null && lessonRepository.countPublishedPeriodUse(schoolId, id) > 0) {
             throw conflict("PERIOD_IN_USE", "A period used by a published timetable cannot be deactivated");
+        }
+        if (request.type() == PeriodType.BREAK && period.getId() != null && lessonRepository.countPublishedPeriodUse(schoolId, id) > 0) {
+            throw conflict("PERIOD_IN_USE", "A period used by a published timetable cannot be changed to a break");
         }
         period.setSchoolId(schoolId);
         period.setName(request.name().trim());
@@ -212,10 +237,22 @@ public class TimetableService {
             String pair = item.streamId() + ":" + item.subjectId() + ":" + item.academicYearId();
             if (!uniquePairs.add(pair)) throw bad("DUPLICATE_ASSIGNMENT", "Assignment batch contains the same stream subject more than once");
             Stream stream = requireStream(schoolId, item.streamId());
-            requireSubject(schoolId, item.subjectId());
+            Subject subject = requireSubject(schoolId, item.subjectId());
+            if (subject.getClassLevelId() != null && !subject.getClassLevelId().equals(stream.getClassLevelId())) {
+                throw bad("CLASS_LEVEL_MISMATCH", "Subject does not belong to the stream's class level");
+            }
             requireAcademicYear(schoolId, item.academicYearId());
             StreamSubject assignment = assignmentRepository.findBySchoolIdAndStreamIdAndAcademicYearId(schoolId, stream.getId(), item.academicYearId())
                     .stream().filter(a -> a.getSubjectId().equals(item.subjectId())).findFirst().orElseGet(StreamSubject::new);
+            if (assignment.getId() != null && item.lessonsPerWeek() < assignment.getLessonsPerWeek()) {
+                List<TimetableLesson> existingLessons = lessonRepository.findBySchoolIdAndStreamSubjectId(schoolId, assignment.getId());
+                for (TimetableLesson l : existingLessons) {
+                    Timetable tt = requireTimetable(schoolId, l.getTimetableId());
+                    if (tt.getStatus() == TimetableStatus.PUBLISHED) {
+                        throw conflict("PUBLISHED_ASSIGNMENT", "Cannot reduce weekly lessons while a published timetable uses this assignment");
+                    }
+                }
+            }
             Long previousTeacher = assignment.getId() == null ? null : assignment.getTeacherId();
             if (item.teacherId() != null) validateTeacher(schoolId, item.teacherId());
             Long previousLessons = assignment.getId() == null ? null : assignment.getLessonsPerWeek().longValue();
@@ -293,7 +330,8 @@ public class TimetableService {
     public LessonBatchView createLessons(LessonBatch request, UserPrincipal principal) {
         Long schoolId = schoolId(request.schoolId(), principal);
         requireAdmin(principal);
-        Timetable timetable = requireTimetable(schoolId, request.timetableId());
+        Timetable timetable = timetableRepository.findLocked(schoolId, request.timetableId())
+                .orElseThrow(() -> notFound("Timetable not found"));
         requireWritableTerm(schoolId, timetable);
         if (timetable.getStatus() != TimetableStatus.DRAFT) throw conflict("TIMETABLE_PUBLISHED", "Published timetable cannot be changed");
         List<String> conflicts = new ArrayList<>();
@@ -364,7 +402,8 @@ public class TimetableService {
         requireAdmin(principal);
         Long schoolId = schoolId(explicitSchoolId, principal);
         TimetableLesson lesson = lessonRepository.findBySchoolIdAndId(schoolId, lessonId).orElseThrow(() -> notFound("Lesson not found"));
-        Timetable timetable = requireTimetable(schoolId, lesson.getTimetableId());
+        Timetable timetable = timetableRepository.findLocked(schoolId, lesson.getTimetableId())
+                .orElseThrow(() -> notFound("Timetable not found"));
         requireWritableTerm(schoolId, timetable);
         if (timetable.getStatus() != TimetableStatus.DRAFT) throw conflict("TIMETABLE_PUBLISHED", "Published timetable cannot be changed");
         String old = lesson.getDayOfWeek() + ":" + lesson.getPeriodId() + ":" + lesson.getRoomId();
@@ -393,7 +432,8 @@ public class TimetableService {
         Long schoolId = schoolId(explicitSchoolId, principal);
         requireAdmin(principal);
         TimetableLesson lesson = lessonRepository.findBySchoolIdAndId(schoolId, lessonId).orElseThrow(() -> notFound("Lesson not found"));
-        Timetable timetable = requireTimetable(schoolId, lesson.getTimetableId());
+        Timetable timetable = timetableRepository.findLocked(schoolId, lesson.getTimetableId())
+                .orElseThrow(() -> notFound("Timetable not found"));
         requireWritableTerm(schoolId, timetable);
         if (timetable.getStatus() != TimetableStatus.DRAFT) throw conflict("TIMETABLE_PUBLISHED", "Published timetable cannot be changed");
         audit(schoolId, "LESSON", lessonId, "DELETED", principal.getId(),
@@ -458,7 +498,16 @@ public class TimetableService {
         Long schoolId = schoolId(null, principal);
         Staff teacher = staffRepository.findBySchoolIdAndUserId(schoolId, principal.getId())
                 .orElseThrow(() -> notFound("Teacher record not found"));
+        LocalDate today = LocalDate.now(schoolZone(schoolId));
+        Term activeTerm = termRepository.findActiveTermBySchoolId(schoolId, today)
+                .orElse(null);
+        if (activeTerm == null) return List.of();
+        Timetable activeTimetable = timetableRepository.findBySchoolIdAndTermId(schoolId, activeTerm.getId())
+                .filter(t -> t.getStatus() == TimetableStatus.PUBLISHED)
+                .orElse(null);
+        if (activeTimetable == null) return List.of();
         return lessonRepository.findPublishedTeacherLessons(schoolId, teacher.getId()).stream()
+                .filter(l -> l.getTimetableId().equals(activeTimetable.getId()))
                 .map(l -> teacherView(schoolId, l)).toList();
     }
 
@@ -468,7 +517,16 @@ public class TimetableService {
         Student student = studentRepository.findBySchoolIdAndUserId(schoolId, principal.getId())
                 .orElseThrow(() -> notFound("Student record not found"));
         if (student.getStreamId() == null) throw notFound("Student stream not found");
+        LocalDate today = LocalDate.now(schoolZone(schoolId));
+        Term activeTerm = termRepository.findActiveTermBySchoolId(schoolId, today)
+                .orElse(null);
+        if (activeTerm == null) return List.of();
+        Timetable activeTimetable = timetableRepository.findBySchoolIdAndTermId(schoolId, activeTerm.getId())
+                .filter(t -> t.getStatus() == TimetableStatus.PUBLISHED)
+                .orElse(null);
+        if (activeTimetable == null) return List.of();
         return lessonRepository.findPublishedStreamLessons(schoolId, student.getStreamId()).stream()
+                .filter(l -> l.getTimetableId().equals(activeTimetable.getId()))
                 .map(l -> studentView(schoolId, l)).toList();
     }
 
@@ -627,7 +685,7 @@ public class TimetableService {
         }
         Long schoolId = principal.getSchoolId();
         if (schoolId == null) throw new TimetableRuleException("SCHOOL_REQUIRED", HttpStatus.FORBIDDEN, "School context is required");
-        if (explicitSchoolId != null && !explicitSchoolId.equals(schoolId)) throw notFound("Resource not found");
+        if (explicitSchoolId != null && !explicitSchoolId.equals(schoolId)) throw forbidden("ACCESS_DENIED", "Access denied");
         return schoolId;
     }
 
@@ -644,7 +702,7 @@ public class TimetableService {
     private void audit(Long schoolId, String type, Long entityId, String action, Long actor,
             String oldValue, String newValue) {
         auditRepository.save(TimetableAudit.builder().schoolId(schoolId).entityType(type).entityId(entityId)
-                .action(action).actorId(actor).oldValue(oldValue).newValue(newValue).occurredAt(LocalDateTime.now()).build());
+                .action(action).actorId(actor).oldValue(oldValue).newValue(newValue).occurredAt(LocalDateTime.now(clock)).build());
     }
     private LessonView lessonView(Long schoolId, TimetableLesson lesson) {
         StreamSubject assignment = requireAssignment(schoolId, lesson.getStreamSubjectId());
@@ -675,8 +733,7 @@ public class TimetableService {
     private TimetableRuleException notFound(String message) { return new TimetableRuleException("RESOURCE_NOT_FOUND", HttpStatus.NOT_FOUND, message); }
     private TimetableRuleException bad(String code, String message) { return new TimetableRuleException(code, HttpStatus.BAD_REQUEST, message); }
     private TimetableRuleException conflict(String code, String message) { return new TimetableRuleException(code, HttpStatus.CONFLICT, message); }
-
-    public record TimetablePublishedEvent(Long timetableId, Long schoolId, Long termId) {}
+    private TimetableRuleException forbidden(String code, String message) { return new TimetableRuleException(code, HttpStatus.FORBIDDEN, message); }
 
     private record AssignmentDay(Long assignmentId, Integer day) {}
     private record TeacherDay(Long teacherId, Integer day) {}

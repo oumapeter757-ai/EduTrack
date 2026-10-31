@@ -44,15 +44,15 @@ public interface TimetableLessonRepository extends JpaRepository<TimetableLesson
     List<TimetableLesson> findTeacherLessons(@Param("school") Long schoolId, @Param("timetable") Long timetableId,
             @Param("teacher") Long teacherId);
 
-    @Query("select count(l) from TimetableLesson l join Timetable t on t.id = l.timetableId where l.schoolId = :school and l.periodId = :period and t.status = com.peterscode.edutrack.timetable.entity.Timetable.TimetableStatus.PUBLISHED")
+    @Query("select count(l) from TimetableLesson l join Timetable t on t.id = l.timetableId where l.schoolId = :school and t.schoolId = :school and l.periodId = :period and t.status = com.peterscode.edutrack.timetable.entity.Timetable.TimetableStatus.PUBLISHED")
     long countPublishedPeriodUse(@Param("school") Long schoolId, @Param("period") Long periodId);
 
-    @Query("select count(l) from TimetableLesson l join Timetable t on t.id = l.timetableId where l.schoolId = :school and l.roomId = :room and t.status = com.peterscode.edutrack.timetable.entity.Timetable.TimetableStatus.PUBLISHED")
+    @Query("select count(l) from TimetableLesson l join Timetable t on t.id = l.timetableId where l.schoolId = :school and t.schoolId = :school and l.roomId = :room and t.status = com.peterscode.edutrack.timetable.entity.Timetable.TimetableStatus.PUBLISHED")
     long countPublishedRoomUse(@Param("school") Long schoolId, @Param("room") Long roomId);
 
-    @Query("select l from TimetableLesson l join Timetable t on t.id = l.timetableId where l.schoolId = :school and l.teacherId = :teacher and t.status = com.peterscode.edutrack.timetable.entity.Timetable.TimetableStatus.PUBLISHED")
+    @Query("select l from TimetableLesson l join Timetable t on t.id = l.timetableId where l.schoolId = :school and t.schoolId = :school and l.teacherId = :teacher and t.status = com.peterscode.edutrack.timetable.entity.Timetable.TimetableStatus.PUBLISHED")
     List<TimetableLesson> findPublishedTeacherLessons(@Param("school") Long schoolId, @Param("teacher") Long teacherId);
 
-    @Query("select l from TimetableLesson l join Timetable t on t.id = l.timetableId where l.schoolId = :school and l.streamId = :stream and t.status = com.peterscode.edutrack.timetable.entity.Timetable.TimetableStatus.PUBLISHED")
+    @Query("select l from TimetableLesson l join Timetable t on t.id = l.timetableId where l.schoolId = :school and t.schoolId = :school and l.streamId = :stream and t.status = com.peterscode.edutrack.timetable.entity.Timetable.TimetableStatus.PUBLISHED")
     List<TimetableLesson> findPublishedStreamLessons(@Param("school") Long schoolId, @Param("stream") Long streamId);
 }

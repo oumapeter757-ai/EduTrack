@@ -78,7 +78,7 @@ public class ModuleAccessAspect {
             }
             if (requestedSchoolId != null && !requestedSchoolId.equals(schoolId)) {
                 deny(schoolId, requirement == null ? null : requirement.value(),
-                        "RESOURCE_NOT_FOUND", "Resource not found");
+                        "ACCESS_DENIED", "Access denied");
             }
         }
 

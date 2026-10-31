@@ -3,6 +3,7 @@ package com.peterscode.edutrack.attendance.controller;
 import com.peterscode.edutrack.attendance.dto.AttendanceRequests.BatchRequest;
 import com.peterscode.edutrack.attendance.dto.AttendanceRequests.StreamQuery;
 import com.peterscode.edutrack.attendance.dto.AttendanceViews.BatchResponse;
+import com.peterscode.edutrack.attendance.dto.AttendanceViews.MyStudentAttendanceView;
 import com.peterscode.edutrack.attendance.dto.AttendanceViews.StudentAttendanceView;
 import com.peterscode.edutrack.attendance.service.AttendanceService;
 import com.peterscode.edutrack.school.enums.ServiceModule;
@@ -56,7 +57,7 @@ public class AttendanceController {
 
     @GetMapping("/me")
     @PreAuthorize("hasRole('STUDENT')")
-    public ResponseEntity<ApiResponse<List<StudentAttendanceView>>> myAttendance(
+    public ResponseEntity<ApiResponse<List<MyStudentAttendanceView>>> myAttendance(
             @AuthenticationPrincipal UserPrincipal principal) {
         return ResponseEntity.ok(ApiResponse.success("Attendance retrieved",
                 attendanceService.myAttendance(principal)));

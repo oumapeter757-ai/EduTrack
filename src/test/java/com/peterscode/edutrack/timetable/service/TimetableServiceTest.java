@@ -129,7 +129,7 @@ class TimetableServiceTest {
         Period period = Period.builder().schoolId(1L).type(Period.PeriodType.LESSON).active(true).build();
         period.setId(90L);
 
-        when(timetableRepository.findBySchoolIdAndId(1L, 70L)).thenReturn(Optional.of(timetable));
+        when(timetableRepository.findLocked(1L, 70L)).thenReturn(Optional.of(timetable));
         when(termRepository.findBySchoolIdAndId(1L, 60L)).thenReturn(Optional.of(term));
         when(schoolRepository.findById(1L)).thenReturn(Optional.of(school));
         when(assignmentRepository.findBySchoolIdAndId(1L, 80L)).thenReturn(Optional.of(assignment));

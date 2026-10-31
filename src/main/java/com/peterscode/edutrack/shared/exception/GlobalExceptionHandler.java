@@ -91,12 +91,16 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(TimetableRuleException.class)
     public ResponseEntity<ApiResponse<Void>> handleTimetableRule(TimetableRuleException ex) {
-        return ResponseEntity.status(ex.getStatus()).body(ApiResponse.error(ex.getMessage(), ex.getErrorCode()));
+        String message = ex.getErrorCode() != null && ex.getErrorCode().startsWith("RESOURCE_NOT_FOUND")
+                ? "Resource not found" : ex.getMessage();
+        return ResponseEntity.status(ex.getStatus()).body(ApiResponse.error(message, ex.getErrorCode()));
     }
 
     @ExceptionHandler(AttendanceRuleException.class)
     public ResponseEntity<ApiResponse<Void>> handleAttendanceRule(AttendanceRuleException ex) {
-        return ResponseEntity.status(ex.getStatus()).body(ApiResponse.error(ex.getMessage(), ex.getErrorCode()));
+        String message = ex.getErrorCode() != null && ex.getErrorCode().startsWith("RESOURCE_NOT_FOUND")
+                ? "Resource not found" : ex.getMessage();
+        return ResponseEntity.status(ex.getStatus()).body(ApiResponse.error(message, ex.getErrorCode()));
     }
 
     @ExceptionHandler(AuthenticationException.class)

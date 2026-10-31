@@ -4,6 +4,7 @@ import com.peterscode.edutrack.attendance.dto.AttendanceRequests.BatchRequest;
 import com.peterscode.edutrack.attendance.dto.AttendanceRequests.StatusException;
 import com.peterscode.edutrack.attendance.dto.AttendanceRequests.StreamQuery;
 import com.peterscode.edutrack.attendance.dto.AttendanceViews.BatchResponse;
+import com.peterscode.edutrack.attendance.dto.AttendanceViews.MyStudentAttendanceView;
 import com.peterscode.edutrack.attendance.dto.AttendanceViews.StudentAttendanceView;
 import com.peterscode.edutrack.attendance.entity.AttendanceStatus;
 import com.peterscode.edutrack.attendance.entity.AttendanceType;
@@ -155,7 +156,7 @@ public class AttendanceService {
     }
 
     @Transactional(readOnly = true)
-    public List<StudentAttendanceView> myAttendance(UserPrincipal principal) {
+    public List<MyStudentAttendanceView> myAttendance(UserPrincipal principal) {
         if (principal == null || principal.getRole() != Role.STUDENT) {
             throw forbidden("STUDENT_ACCESS_REQUIRED", "Student access is required");
         }
@@ -163,7 +164,7 @@ public class AttendanceService {
         Student student = studentRepository.findBySchoolIdAndUserId(schoolId, principal.getId())
                 .orElseThrow(() -> notFound("Student record not found"));
         return attendanceRepository.findBySchoolIdAndStudentIdOrderByAttendanceDateDescIdDesc(schoolId, student.getId())
-                .stream().map(row -> view(row, student)).toList();
+                .stream().map(row -> myView(row, student)).toList();
     }
 
     private Term requireTerm(Long schoolId, Long termId, LocalDate attendanceDate) {
@@ -292,7 +293,7 @@ public class AttendanceService {
             throw forbidden("SCHOOL_REQUIRED", "School context is required");
         }
         if (explicitSchoolId != null && !explicitSchoolId.equals(schoolId)) {
-            throw notFound("Resource not found");
+            throw forbidden("ACCESS_DENIED", "Access denied");
         }
         return schoolId;
     }
@@ -319,6 +320,12 @@ public class AttendanceService {
         return new StudentAttendanceView(row.getId(), row.getStudentId(),
                 student == null ? null : student.getFullName(), row.getStreamId(), row.getAttendanceDate(),
                 row.getAttendanceType(), row.getTimetableLessonId(), row.getStatus(), row.getRemarks(), row.getUpdatedAt());
+    }
+
+    private MyStudentAttendanceView myView(StudentAttendance row, Student student) {
+        return new MyStudentAttendanceView(
+                student == null ? null : student.getFullName(), row.getAttendanceDate(),
+                row.getAttendanceType(), row.getStatus());
     }
 
     private AttendanceRuleException notFound(String message) {

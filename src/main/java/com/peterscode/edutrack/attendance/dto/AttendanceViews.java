@@ -21,6 +21,13 @@ public final class AttendanceViews {
             String remarks,
             LocalDateTime updatedAt) {}
 
+    /** Student self-service view — no remarks, no internal IDs, no audit data. */
+    public record MyStudentAttendanceView(
+            String studentName,
+            LocalDate attendanceDate,
+            AttendanceType attendanceType,
+            AttendanceStatus status) {}
+
     public record BatchResponse(
             int rosterSize,
             int createdCount,
