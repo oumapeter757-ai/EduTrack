@@ -30,6 +30,7 @@ import com.peterscode.edutrack.security.PlanLimitReachedException;
 import com.peterscode.edutrack.timetable.exception.TimetableRuleException;
 import com.peterscode.edutrack.library.exception.LibraryRuleException;
 import com.peterscode.edutrack.lms.exception.LmsRuleException;
+import com.peterscode.edutrack.fees.exception.FeesRuleException;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.authentication.LockedException;
@@ -130,6 +131,13 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(LmsRuleException.class)
     public ResponseEntity<ApiResponse<Void>> handleLmsRule(LmsRuleException ex) {
+        String message = ex.getErrorCode() != null && ex.getErrorCode().startsWith("RESOURCE_NOT_FOUND")
+                ? "Resource not found" : ex.getMessage();
+        return ResponseEntity.status(ex.getStatus()).body(ApiResponse.error(message, ex.getErrorCode()));
+    }
+
+    @ExceptionHandler(FeesRuleException.class)
+    public ResponseEntity<ApiResponse<Void>> handleFeesRule(FeesRuleException ex) {
         String message = ex.getErrorCode() != null && ex.getErrorCode().startsWith("RESOURCE_NOT_FOUND")
                 ? "Resource not found" : ex.getMessage();
         return ResponseEntity.status(ex.getStatus()).body(ApiResponse.error(message, ex.getErrorCode()));

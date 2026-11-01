@@ -5,10 +5,13 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import com.peterscode.edutrack.fees.service.CredentialEncryptionService;
 import com.peterscode.edutrack.security.service.CustomUserDetailsService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Profile;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.DefaultAuthenticationEventPublisher;
@@ -61,5 +64,16 @@ public class ApplicationConfig {
                 .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, true)
                 .addModule(new JavaTimeModule())
                 .build();
+    }
+
+    @Bean
+    @Profile("!test")
+    public CredentialEncryptionService credentialEncryptionService(
+            @Value("${edutrack.fees.encryption-key:}") String encryptionKey) {
+        // Use a default key for development; production must set EDUTRACK_FEES_ENCRYPTION_KEY
+        String key = encryptionKey.isBlank()
+                ? "YWRtaW4xMjM0NTY3ODkwYWRtaW4xMjM0NTY3ODkw" // dev-only 256-bit key
+                : encryptionKey;
+        return new CredentialEncryptionService(key);
     }
 }

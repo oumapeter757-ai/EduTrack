@@ -349,3 +349,77 @@ Build `@SpringBootTest` integration test simulating the full confirmation flow.
   - Assert 200 OK response with `ResultCode: 0`.
   - Assert database state: invoice status = CONFIRMED, school subscription updated.
   - Verify email trigger via `@SpyBean` on `JavaMailSender`.
+
+### ✓ Step 10: Phase 1 — ACCOUNTANT role, default-deny audit, and gate wiring
+Build the ACCOUNTANT role foundation with full test coverage.
+- Added `ACCOUNTANT` to Role enum with proper creation hierarchy.
+- Created `FeesRuleException` and `FeesAccessGuard` for centralized authorization.
+- Added `createAccountant()` to `UserRegistrationService` with BILLING module check.
+- Added `POST /api/v1/admin/accountants` endpoint.
+- Added `/api/v1/fees/callback/**` to `permitAll()` in SecurityConfig.
+- 22 unit tests in `FeesPhase1Test`.
+
+### ✓ Step 11: Phase 2 — Fee structures, accounts, invoices, ledger, payments, and statements
+Build the core fees data layer, services, controllers, and tests.
+- Created 8 entities: FeeStructure, FeeItem, StudentFeeAccount, FeeInvoice, FeeInvoiceLine, LedgerEntry, FeePayment, PaymentAllocation.
+- Created 7 enums: FeeInvoiceStatus, LedgerEntryType, FeePaymentStatus, FeePaymentChannel, DiscountType, FeeStructureStatus, StudentFeeAccountStatus.
+- Created 7 repositories with proper query methods and PESSIMISTIC_WRITE lock support.
+- Created 5 Flyway migrations (V38–V42) with proper FK constraints and indexes.
+- Created 8 DTOs for requests and responses.
+- Created 5 services: FeeStructureService, FeeInvoiceService, LedgerService, PaymentPostingService, FeeStatementService.
+- Created FeesController with 11 endpoints gated by `@RequiresModule(ServiceModule.BILLING)`.
+- 14 unit tests in `FeesPhase2Test` covering all services and enums.
+
+### ✓ Step 12: Phase 3 — Parent and student views and permissions
+Build parent and student role-scoped fee data access with proper authorization.
+- Created `LinkedChildView` DTO for parent child listing (studentId, studentName, admissionNumber, balance).
+- Added parent endpoints to `FeesController`: `GET /api/v1/fees/parent/children` (list linked children with balance), `GET /api/v1/fees/parent/{studentId}/invoices`, `GET /api/v1/fees/parent/{studentId}/payments`, `GET /api/v1/fees/parent/{studentId}/statement`.
+- Wired `ParentAccessGuard` in all parent endpoints to verify parent-student link before returning data.
+- Added student self-service endpoints: `GET /api/v1/fees/student/invoices`, `GET /api/v1/fees/student/payments`, `GET /api/v1/fees/student/statement` — student sees only their own data.
+- Enhanced service methods to handle PARENT role with ParentAccessGuard verification.
+- 18 unit tests in `FeesPhase3Test` covering role-based access matrix, parent link verification, student self-service, and cross-tenant isolation.
+
+### ✓ Step 13: Phase 4 — School payment config, credential encryption, callback inbox, C2B matching, unallocated queue
+Build the school Mpesa payment configuration, encrypted credential storage, durable callback inbox, C2B payment matching by admission number, and unallocated payment resolution queue.
+- Created 4 enums: ShortcodeType, MpesaEnvironment, CallbackChannel, UnallocatedPaymentStatus.
+- Created 3 entities: SchoolPaymentConfig, CallbackInbox, UnallocatedPayment.
+- Created 3 repositories: SchoolPaymentConfigRepository, CallbackInboxRepository, UnallocatedPaymentRepository.
+- Created 3 Flyway migrations (V43–V45).
+- Created CredentialEncryptionService with AES-GCM encryption/decryption.
+- Created SchoolPaymentConfigService for CRUD, test connection, token rotation.
+- Created C2bCallbackService for processing C2B confirmation and validation callbacks.
+- Created PaymentMatchingService for normalizing and matching account references to students.
+- Created UnallocatedPaymentService for listing and resolving unallocated payments.
+- Created C2bWebhookController with public callback endpoints (@NoModuleRequired).
+- Added config endpoints to FeesController: GET/POST config, test connection, rotate token, toggle enabled.
+- Added unallocated payment endpoints: list, allocate, refund.
+- Registered CredentialEncryptionService bean in ApplicationConfig.
+- 25 unit tests in FeesPhase4Test covering encryption, matching, config, unallocated payments, enums, and DTOs.
+- Total: 88 fees tests passing (22 Phase 1 + 14 Phase 2 + 27 Phase 3 + 25 Phase 4).
+
+### ✓ Step 14: Phase 5 — STK Push, callback, status query, and timeout job
+Build the STK Push payment flow for parent and student in-app payments.
+- Created MpesaClient interface with DarajaMpesaClient implementation and FakeMpesaClient for tests.
+- Created StkPushService for initiating STK push payments with validation, idempotency, and rate limiting.
+- Created StkCallbackService for processing STK push result callbacks from Safaricom.
+- Added STK callback endpoint to C2bWebhookController: POST /api/v1/fees/callback/stk/{token}.
+- Added STK initiation endpoint to FeesController: POST /api/v1/fees/payments/stk.
+- Added payment status polling endpoint: GET /api/v1/fees/payments/{id}/status.
+- Created StkPushTimeoutJob as a scheduled job to resolve stale PENDING payments via status query.
+- Created StkPushRequestDto and StkPushResponseDto.
+- Added FeePayment repository methods for STK push: findBySchoolIdAndStudentIdAndStatus, findByCheckoutRequestID.
+- Updated FeePayment entity with checkoutRequestID field for STK matching.
+- Created Flyway migration V46 for adding checkout_request_id to fee_payments.
+- 25 unit tests in FeesPhase5Test covering STK initiation, callback processing, idempotency, timeout job, and status queries.
+- Total: 113 fees tests passing (22 Phase 1 + 14 Phase 2 + 27 Phase 3 + 25 Phase 4 + 25 Phase 5).
+
+### ✓ Step 15: Phase 6 — Reports, reconciliation, CSV export, and security review
+Build the fees reporting layer with collection summaries, arrears by class level, daily reconciliation, CSV export with formula injection protection, and a full security review.
+- Created 4 DTOs: CollectionByDayView, CollectionByChannelView, ArrearsByClassLevelView, ReconciliationDayView.
+- Created FeeReportService with methods: collectionByDay(), collectionByChannel(), arrearsByClassLevel(), dailyReconciliation().
+- Added native SQL queries in FeePaymentRepository (sumSucceededByDay, sumSucceededByChannel), StudentFeeAccountRepository (arrearsByClassLevel), LedgerEntryRepository (sumPaymentsByDay).
+- Created CsvExporter utility with formula injection protection (escapes =, +, -, @), row cap (10,000), BOM support for Excel.
+- Added 5 report endpoints to FeesController: GET /reports/collection, /reports/collection/by-channel, /reports/arrears, /reports/reconciliation, /reports/export (CSV).
+- Security review: verified all report queries are school-scoped, callback endpoints are token-protected, credentials never returned by config endpoints.
+- 28 unit tests in FeesPhase6Test covering collection reports (3), channel reports (1), arrears reports (3), reconciliation (3), CSV export (12), and security review (6).
+- Total: 141 fees tests passing (22 Phase 1 + 14 Phase 2 + 27 Phase 3 + 25 Phase 4 + 25 Phase 5 + 28 Phase 6).

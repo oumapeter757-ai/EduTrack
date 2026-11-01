@@ -68,4 +68,6 @@ public interface StudentRepository extends JpaRepository<Student, Long>, JpaSpec
 
     @org.springframework.data.jpa.repository.Query("select s.classLevelId, count(s) from Student s where s.schoolId = :schoolId group by s.classLevelId")
     List<Object[]> countGroupedByClassLevel(Long schoolId);
+
+    List<Student> findBySchoolIdAndClassLevelIdAndStatus(Long schoolId, Long classLevelId, StudentStatus status);
 }

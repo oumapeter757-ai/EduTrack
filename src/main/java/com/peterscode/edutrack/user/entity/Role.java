@@ -10,8 +10,8 @@ import java.util.Set;
  * <ul>
  *   <li>Initial SUPER_ADMIN can sign up when no SUPER_ADMIN exists in the system (signup is disabled thereafter)</li>
  *   <li>SUPER_ADMIN → can create SUPER_ADMIN and SCHOOL_ADMIN (any school)</li>
- *   <li>SCHOOL_ADMIN → can create TEACHER, STUDENT, PARENT, LIBRARIAN (own school only)</li>
- *   <li>TEACHER, STUDENT, PARENT, LIBRARIAN → cannot create anyone</li>
+ *   <li>SCHOOL_ADMIN → can create TEACHER, STUDENT, PARENT, LIBRARIAN, ACCOUNTANT (own school only)</li>
+ *   <li>TEACHER, STUDENT, PARENT, LIBRARIAN, ACCOUNTANT → cannot create anyone</li>
  * </ul>
  */
 public enum Role {
@@ -21,7 +21,8 @@ public enum Role {
     TEACHER,
     STUDENT,
     PARENT,
-    LIBRARIAN;
+    LIBRARIAN,
+    ACCOUNTANT;
 
     /**
      * Returns the set of roles that the given creator role is allowed to create.
@@ -30,8 +31,8 @@ public enum Role {
     public static Set<Role> creatableBy(Role creatorRole) {
         return switch (creatorRole) {
             case SUPER_ADMIN -> EnumSet.of(SUPER_ADMIN, SCHOOL_ADMIN);
-            case SCHOOL_ADMIN -> EnumSet.of(TEACHER, STUDENT, PARENT, LIBRARIAN);
-            case TEACHER, STUDENT, PARENT, LIBRARIAN -> EnumSet.noneOf(Role.class);
+            case SCHOOL_ADMIN -> EnumSet.of(TEACHER, STUDENT, PARENT, LIBRARIAN, ACCOUNTANT);
+            case TEACHER, STUDENT, PARENT, LIBRARIAN, ACCOUNTANT -> EnumSet.noneOf(Role.class);
         };
     }
 
@@ -47,6 +48,6 @@ public enum Role {
      * (creator must belong to the same school as the user being created).
      */
     public boolean requiresSameSchool() {
-        return this == TEACHER || this == STUDENT || this == PARENT || this == LIBRARIAN;
+        return this == TEACHER || this == STUDENT || this == PARENT || this == LIBRARIAN || this == ACCOUNTANT;
     }
 }

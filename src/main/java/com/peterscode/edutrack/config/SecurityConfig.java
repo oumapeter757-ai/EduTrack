@@ -47,6 +47,8 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/schools/code/**").permitAll()
                         // Mpesa C2B webhook callbacks (public — called by Safaricom)
                         .requestMatchers("/api/v1/payments/callback/**").permitAll()
+                        // Fees Mpesa webhook callbacks (public — called by Safaricom)
+                        .requestMatchers("/api/v1/fees/callback/**").permitAll()
                         // Actuator health check
                         .requestMatchers("/actuator/health").permitAll()
                         // Lock down everything else

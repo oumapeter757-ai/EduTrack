@@ -37,7 +37,7 @@ import java.security.MessageDigest;
  * <ul>
  *   <li>Initial SUPER_ADMIN can self-register when no SUPER_ADMIN exists in the system (signup is disabled thereafter)</li>
  *   <li>SUPER_ADMIN creates SUPER_ADMIN and SCHOOL_ADMIN for any school</li>
- *   <li>SCHOOL_ADMIN creates TEACHER, STUDENT, PARENT for their own school only</li>
+ *   <li>SCHOOL_ADMIN creates TEACHER, STUDENT, PARENT, LIBRARIAN, ACCOUNTANT for their own school only</li>
  * </ul>
  */
 @Service
@@ -141,6 +141,18 @@ public class UserRegistrationService {
         Long schoolId = requireSchool(creator);
         moduleAccessService.assertModuleEnabled(schoolId, ServiceModule.LIBRARY);
         return createUser(request, schoolId, Role.LIBRARIAN);
+    }
+
+    /**
+     * SCHOOL_ADMIN creates an ACCOUNTANT for their own school.
+     * Requires the BILLING module to be enabled on the school's subscription plan.
+     */
+    @Transactional
+    public UserResponseDto createAccountant(CreateSchoolUserRequestDto request, UserPrincipal creator) {
+        validateCreatorRole(creator, Role.SCHOOL_ADMIN, Role.ACCOUNTANT);
+        Long schoolId = requireSchool(creator);
+        moduleAccessService.assertModuleEnabled(schoolId, ServiceModule.BILLING);
+        return createUser(request, schoolId, Role.ACCOUNTANT);
     }
 
     private void validateCreatorRole(UserPrincipal creator, Role requiredRole, Role targetRole) {

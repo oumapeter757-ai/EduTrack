@@ -29,6 +29,7 @@ import com.peterscode.edutrack.security.RequiresActiveSchool;
  *   <li>POST /api/v1/admin/teachers — SCHOOL_ADMIN creates TEACHER</li>
  *   <li>POST /api/v1/admin/students — SCHOOL_ADMIN creates STUDENT</li>
  *   <li>POST /api/v1/admin/parents — SCHOOL_ADMIN creates PARENT</li>
+ *   <li>POST /api/v1/admin/accountants — SCHOOL_ADMIN creates ACCOUNTANT (requires BILLING module)</li>
  * </ul>
  */
 @RestController
@@ -124,5 +125,20 @@ public class UserManagementController {
         UserResponseDto response = registrationService.createLibrarian(request, currentUser);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success("Librarian created successfully", response));
+    }
+
+    /**
+     * SCHOOL_ADMIN creates an ACCOUNTANT for their own school.
+     * Requires the BILLING module to be enabled on the school's subscription plan.
+     */
+    @PostMapping("/accountants")
+    @PreAuthorize("hasRole('SCHOOL_ADMIN')")
+    public ResponseEntity<ApiResponse<UserResponseDto>> createAccountant(
+            @Valid @RequestBody CreateSchoolUserRequestDto request,
+            @AuthenticationPrincipal UserPrincipal currentUser) {
+
+        UserResponseDto response = registrationService.createAccountant(request, currentUser);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.success("Accountant created successfully", response));
     }
 }
