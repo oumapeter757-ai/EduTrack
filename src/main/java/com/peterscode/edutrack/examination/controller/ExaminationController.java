@@ -33,7 +33,7 @@ public class ExaminationController {
     }
 
     @GetMapping("/series")
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasAnyRole('SCHOOL_ADMIN', 'SUPER_ADMIN', 'TEACHER', 'STUDENT', 'PARENT')")
     public ResponseEntity<List<ExamSeriesView>> examSeries(
             @RequestParam Long schoolId,
             UserPrincipal principal) {
@@ -41,7 +41,7 @@ public class ExaminationController {
     }
 
     @GetMapping("/series/{id}")
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasAnyRole('SCHOOL_ADMIN', 'SUPER_ADMIN', 'TEACHER', 'STUDENT', 'PARENT')")
     public ResponseEntity<ExamSeriesView> getExamSeries(
             @RequestParam Long schoolId,
             @PathVariable Long id,
@@ -114,7 +114,7 @@ public class ExaminationController {
     // ==================== Views ====================
 
     @GetMapping("/series/{id}/registrations")
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasAnyRole('SCHOOL_ADMIN', 'SUPER_ADMIN', 'TEACHER', 'STUDENT', 'PARENT')")
     public ResponseEntity<List<ExamRegistrationView>> seriesRegistrations(
             @RequestParam Long schoolId,
             @PathVariable Long id,

@@ -45,7 +45,7 @@ public class ClassLevelController {
     }
 
     @GetMapping("/active")
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER', 'STUDENT', 'PARENT')")
     public ResponseEntity<ApiResponse<List<ClassLevelResponseDto>>> getActiveClassLevels(
             @AuthenticationPrincipal UserPrincipal principal) {
         List<ClassLevelResponseDto> response = classLevelService.getActiveClassLevels(principal);
@@ -53,7 +53,7 @@ public class ClassLevelController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER', 'STUDENT', 'PARENT')")
     public ResponseEntity<ApiResponse<ClassLevelResponseDto>> getClassLevelById(
             @PathVariable Long id, @AuthenticationPrincipal UserPrincipal principal) {
         ClassLevelResponseDto response = classLevelService.getClassLevelById(id, principal);

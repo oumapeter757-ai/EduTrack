@@ -37,4 +37,6 @@ public interface SchoolService {
     SchoolResponseDto updateEnabledModules(Long id, Set<ServiceModule> modules);
 
     boolean isModuleEnabled(Long schoolId, ServiceModule module);
+
+    void activateSubscriptionByPayment(Long invoiceId);
 }

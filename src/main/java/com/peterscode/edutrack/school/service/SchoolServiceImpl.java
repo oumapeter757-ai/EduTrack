@@ -6,6 +6,12 @@ import com.peterscode.edutrack.school.enums.ServiceModule;
 import com.peterscode.edutrack.school.enums.SubscriptionStatus;
 import com.peterscode.edutrack.school.enums.SubscriptionTier;
 import com.peterscode.edutrack.school.mapper.SchoolMapper;
+import com.peterscode.edutrack.payment.entity.PaymentInvoice;
+import com.peterscode.edutrack.payment.entity.PaymentTransaction;
+import com.peterscode.edutrack.payment.enums.BillingPeriod;
+import com.peterscode.edutrack.payment.enums.PaymentTransactionEventType;
+import com.peterscode.edutrack.payment.repository.PaymentInvoiceRepository;
+import com.peterscode.edutrack.payment.repository.PaymentTransactionRepository;
 import com.peterscode.edutrack.school.repository.SchoolRepository;
 import com.peterscode.edutrack.security.UserPrincipal;
 import com.peterscode.edutrack.security.AuthRateLimiter;
@@ -59,6 +65,8 @@ public class SchoolServiceImpl implements SchoolService {
     private final SubscriptionTermsResolver subscriptionTermsResolver;
     private final Clock clock;
     private final AuthRateLimiter authRateLimiter;
+    private final PaymentInvoiceRepository paymentInvoiceRepository;
+    private final PaymentTransactionRepository paymentTransactionRepository;
 
     /** Null-safe transition validator. Skips when either side is null or when the status is unchanged. */
     private void validateTransition(SubscriptionStatus current, SubscriptionStatus requested) {
@@ -401,5 +409,57 @@ public class SchoolServiceImpl implements SchoolService {
 
     private static String escapeLike(String value) {
         return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
+    }
+
+    @Transactional
+    @Override
+    public void activateSubscriptionByPayment(Long invoiceId) {
+        PaymentInvoice invoice = paymentInvoiceRepository.findById(invoiceId)
+                .orElseThrow(() -> new com.peterscode.edutrack.shared.exception.ResourceNotFoundException(
+                        "Payment invoice not found with id " + invoiceId));
+
+        School school = invoice.getSchool();
+        SubscriptionTier newTier = invoice.getTier();
+        BillingPeriod billingPeriod = invoice.getBillingPeriod();
+
+        // Calculate start date: day after current subscription ends, or today if no active subscription
+        LocalDate startDate;
+        if (school.getSubscriptionEndDate() != null
+                && school.getSubscriptionStatus() == SubscriptionStatus.ACTIVE) {
+            startDate = school.getSubscriptionEndDate().plusDays(1);
+        } else {
+            try {
+                startDate = LocalDate.now(clock.withZone(ZoneId.of(school.getTimezone())));
+            } catch (DateTimeException ex) {
+                startDate = LocalDate.now(clock);
+            }
+        }
+
+        // Calculate end date based on billing period
+        LocalDate endDate;
+        if (billingPeriod == BillingPeriod.TERM) {
+            endDate = startDate.plusMonths(3);
+        } else {
+            endDate = startDate.plusYears(1);
+        }
+
+        // Validate dates using existing resolver
+        SubscriptionTermsResolver.SubscriptionTerms terms = subscriptionTermsResolver.resolve(
+                newTier, startDate, endDate, school.getTimezone(),
+                school.getSubscriptionStartDate(), school.getSubscriptionEndDate(), true);
+
+        // Update school subscription
+        school.setSubscriptionTier(newTier);
+        school.setSubscriptionStatus(SubscriptionStatus.ACTIVE);
+        school.setSubscriptionStartDate(terms.start());
+        school.setSubscriptionEndDate(terms.end());
+        school.setMaxStudents(newTier == SubscriptionTier.ENTERPRISE ? null : PlanCatalog.maxStudents(newTier));
+        school.setMaxTeachers(newTier == SubscriptionTier.ENTERPRISE ? null : PlanCatalog.maxTeachers(newTier));
+        school.setEnabledModules(enumSet(ServiceModule.getDefaultModulesForTier(newTier)));
+
+        schoolRepository.save(school);
+
+        log.info("Subscription activated for school {} ({}) via payment invoice {}: tier={}, period={}, start={}, end={}",
+                school.getName(), school.getCode(), invoice.getInvoiceNumber(), newTier, billingPeriod, terms.start(), terms.end());
     }
 }

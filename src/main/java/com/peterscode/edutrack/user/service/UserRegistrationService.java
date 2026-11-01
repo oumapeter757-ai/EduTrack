@@ -7,11 +7,13 @@ import com.peterscode.edutrack.user.dto.CreateUserRequestDto;
 import com.peterscode.edutrack.user.dto.UserResponseDto;
 import com.peterscode.edutrack.shared.exception.UnauthorizedOperationException;
 import com.peterscode.edutrack.security.UserPrincipal;
+import com.peterscode.edutrack.security.ModuleAccessService;
 import com.peterscode.edutrack.user.entity.Role;
 import com.peterscode.edutrack.user.entity.User;
 import com.peterscode.edutrack.user.repository.UserRepository;
 import com.peterscode.edutrack.school.repository.SchoolRepository;
 import com.peterscode.edutrack.school.entity.School;
+import com.peterscode.edutrack.school.enums.ServiceModule;
 import com.peterscode.edutrack.security.PlanGuard;
 import com.peterscode.edutrack.security.AuthRateLimiter;
 import com.peterscode.edutrack.shared.exception.DuplicateResourceException;
@@ -46,6 +48,7 @@ public class UserRegistrationService {
     private final PasswordEncoder passwordEncoder;
     private final SchoolRepository schoolRepository;
     private final PlanGuard planGuard;
+    private final ModuleAccessService moduleAccessService;
     private final EntityManager entityManager;
     private final AuthRateLimiter rateLimiter;
     @Value("${edutrack.bootstrap.token:}")
@@ -126,6 +129,18 @@ public class UserRegistrationService {
     public UserResponseDto createParent(CreateSchoolUserRequestDto request, UserPrincipal creator) {
         validateCreatorRole(creator, Role.SCHOOL_ADMIN, Role.PARENT);
         return createUser(request, requireSchool(creator), Role.PARENT);
+    }
+
+    /**
+     * SCHOOL_ADMIN creates a LIBRARIAN for their own school.
+     * Requires the LIBRARY module to be enabled on the school's subscription plan.
+     */
+    @Transactional
+    public UserResponseDto createLibrarian(CreateSchoolUserRequestDto request, UserPrincipal creator) {
+        validateCreatorRole(creator, Role.SCHOOL_ADMIN, Role.LIBRARIAN);
+        Long schoolId = requireSchool(creator);
+        moduleAccessService.assertModuleEnabled(schoolId, ServiceModule.LIBRARY);
+        return createUser(request, schoolId, Role.LIBRARIAN);
     }
 
     private void validateCreatorRole(UserPrincipal creator, Role requiredRole, Role targetRole) {

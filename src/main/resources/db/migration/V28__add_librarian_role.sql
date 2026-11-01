@@ -1,0 +1,5 @@
+-- V28: Add LIBRARIAN role support
+-- The role column in users table is VARCHAR(50), so no schema change is needed.
+-- This migration documents the addition of the LIBRARIAN role to the Role enum.
+-- LIBRARIAN users are school-scoped (school_id NOT NULL) and can be created by SCHOOL_ADMIN.
+-- No data migration required; existing rows are unaffected.

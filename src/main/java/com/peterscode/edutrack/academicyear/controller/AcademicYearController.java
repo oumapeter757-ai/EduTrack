@@ -46,7 +46,7 @@ public class AcademicYearController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER', 'STUDENT', 'PARENT')")
     public ResponseEntity<ApiResponse<AcademicYearResponseDto>> getAcademicYearById(
             @PathVariable Long id,
             @AuthenticationPrincipal UserPrincipal principal) {
@@ -55,7 +55,7 @@ public class AcademicYearController {
     }
 
     @GetMapping("/current")
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER', 'STUDENT', 'PARENT')")
     public ResponseEntity<ApiResponse<AcademicYearResponseDto>> getCurrentAcademicYear(
             @AuthenticationPrincipal UserPrincipal principal) {
         AcademicYearResponseDto response = academicYearService.getCurrentAcademicYear(principal);

@@ -21,10 +21,10 @@ class RoleTest {
     }
 
     @Test
-    @DisplayName("SCHOOL_ADMIN can create TEACHER, STUDENT, PARENT")
+    @DisplayName("SCHOOL_ADMIN can create TEACHER, STUDENT, PARENT, LIBRARIAN")
     void schoolAdminCanCreateSchoolUsers() {
         assertThat(Role.creatableBy(Role.SCHOOL_ADMIN))
-                .containsExactlyInAnyOrder(Role.TEACHER, Role.STUDENT, Role.PARENT);
+                .containsExactlyInAnyOrder(Role.TEACHER, Role.STUDENT, Role.PARENT, Role.LIBRARIAN);
 
         assertThat(Role.canCreate(Role.SCHOOL_ADMIN, Role.SUPER_ADMIN)).isFalse();
         assertThat(Role.canCreate(Role.SCHOOL_ADMIN, Role.SCHOOL_ADMIN)).isFalse();

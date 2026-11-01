@@ -45,6 +45,8 @@ public class SecurityConfig {
                         // Public tenant lookup for login screens
                         .requestMatchers("/api/v1/schools/subdomain/**").permitAll()
                         .requestMatchers("/api/v1/schools/code/**").permitAll()
+                        // Mpesa C2B webhook callbacks (public — called by Safaricom)
+                        .requestMatchers("/api/v1/payments/callback/**").permitAll()
                         // Actuator health check
                         .requestMatchers("/actuator/health").permitAll()
                         // Lock down everything else

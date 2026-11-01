@@ -1,0 +1,46 @@
+-- V33: LMS Assignments and Submissions
+CREATE TABLE lms_assignment (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    school_id BIGINT NOT NULL,
+    course_id BIGINT NOT NULL,
+    title VARCHAR(255) NOT NULL,
+    instructions TEXT,
+    opens_at TIMESTAMP NOT NULL,
+    due_at TIMESTAMP NOT NULL,
+    max_score DECIMAL(10,2) NOT NULL,
+    late_policy VARCHAR(16) NOT NULL DEFAULT 'ALLOW_FLAGGED' CHECK (late_policy IN ('BLOCK', 'ALLOW_FLAGGED')),
+    status VARCHAR(16) NOT NULL DEFAULT 'DRAFT' CHECK (status IN ('DRAFT', 'PUBLISHED', 'CLOSED')),
+    created_by BIGINT NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT fk_lms_assignment_school FOREIGN KEY (school_id) REFERENCES schools(id),
+    CONSTRAINT fk_lms_assignment_course FOREIGN KEY (course_id) REFERENCES lms_course(id),
+    INDEX idx_lms_assignment_course (course_id),
+    INDEX idx_lms_assignment_school (school_id)
+) ENGINE=InnoDB;
+
+CREATE TABLE lms_submission (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    school_id BIGINT NOT NULL,
+    assignment_id BIGINT NOT NULL,
+    student_id BIGINT NOT NULL,
+    answer_text TEXT,
+    submitted_at TIMESTAMP,
+    late BOOLEAN NOT NULL DEFAULT FALSE,
+    attempt_count INT NOT NULL DEFAULT 1,
+    status VARCHAR(16) NOT NULL DEFAULT 'SUBMITTED' CHECK (status IN ('SUBMITTED', 'MARKED')),
+    score DECIMAL(10,2),
+    feedback TEXT,
+    released BOOLEAN NOT NULL DEFAULT FALSE,
+    marked_by BIGINT,
+    marked_at TIMESTAMP,
+    version BIGINT NOT NULL DEFAULT 0,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT uq_lms_submission_school_assignment_student UNIQUE (school_id, assignment_id, student_id),
+    CONSTRAINT fk_lms_submission_school FOREIGN KEY (school_id) REFERENCES schools(id),
+    CONSTRAINT fk_lms_submission_assignment FOREIGN KEY (assignment_id) REFERENCES lms_assignment(id),
+    INDEX idx_lms_submission_assignment (assignment_id),
+    INDEX idx_lms_submission_student (student_id)
+) ENGINE=InnoDB;

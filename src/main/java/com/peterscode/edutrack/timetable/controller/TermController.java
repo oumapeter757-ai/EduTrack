@@ -32,7 +32,7 @@ public class TermController {
     }
 
     @GetMapping
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER', 'STUDENT', 'PARENT')")
     public ResponseEntity<ApiResponse<List<TermView>>> getTerms(
             @RequestParam(required = false) Long academicYearId,
             @RequestParam(required = false) Long schoolId,
@@ -41,7 +41,7 @@ public class TermController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER', 'STUDENT', 'PARENT')")
     public ResponseEntity<ApiResponse<TermView>> getTermById(
             @PathVariable Long id,
             @RequestParam(required = false) Long schoolId,

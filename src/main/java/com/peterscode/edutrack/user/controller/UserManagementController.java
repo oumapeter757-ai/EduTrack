@@ -110,4 +110,19 @@ public class UserManagementController {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success("Parent created successfully", response));
     }
+
+    /**
+     * SCHOOL_ADMIN creates a LIBRARIAN for their own school.
+     * Requires the LIBRARY module to be enabled on the school's subscription plan.
+     */
+    @PostMapping("/librarians")
+    @PreAuthorize("hasRole('SCHOOL_ADMIN')")
+    public ResponseEntity<ApiResponse<UserResponseDto>> createLibrarian(
+            @Valid @RequestBody CreateSchoolUserRequestDto request,
+            @AuthenticationPrincipal UserPrincipal currentUser) {
+
+        UserResponseDto response = registrationService.createLibrarian(request, currentUser);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.success("Librarian created successfully", response));
+    }
 }

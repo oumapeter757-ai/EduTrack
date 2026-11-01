@@ -32,6 +32,21 @@ spring:
     web:
       pageable:
         max-page-size: 100
+  mail:
+    host: ${SPRING_MAIL_HOST:localhost}
+    port: ${SPRING_MAIL_PORT:587}
+    username: ${SPRING_MAIL_USERNAME:}
+    password: ${SPRING_MAIL_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: ${SPRING_MAIL_SMTP_AUTH:true}
+          starttls:
+            enabled: ${SPRING_MAIL_SMTP_STARTTLS_ENABLED:true}
+          connectiontimeout: ${SPRING_MAIL_SMTP_CONNECTION_TIMEOUT:5000}
+          timeout: ${SPRING_MAIL_SMTP_TIMEOUT:5000}
+          writetimeout: ${SPRING_MAIL_SMTP_WRITE_TIMEOUT:5000}
+    default-encoding: UTF-8
 
 server:
   port: 8080
@@ -55,6 +70,15 @@ edutrack:
       signup-window-seconds: ${EDUTRACK_AUTH_RATE_LIMIT_SIGNUP_WINDOW_SECONDS:3600}
       public-lookup-max-attempts: ${EDUTRACK_AUTH_RATE_LIMIT_PUBLIC_LOOKUP_MAX_ATTEMPTS:30}
       trusted-proxy: ${EDUTRACK_AUTH_RATE_LIMIT_TRUSTED_PROXY:false}
+  storage:
+    base-path: ${EDUTRACK_STORAGE_PATH}
+    max-file-size: ${EDUTRACK_STORAGE_MAX_FILE_SIZE:10485760}
+    school-quota-bytes: ${EDUTRACK_STORAGE_SCHOOL_QUOTA_BYTES:1073741824}
+    allowed-extensions: ${EDUTRACK_STORAGE_ALLOWED_EXTENSIONS:pdf,doc,docx,ppt,pptx,xls,xlsx,txt,png,jpg,jpeg}
+    min-free-bytes: ${EDUTRACK_STORAGE_MIN_FREE_BYTES:104857600}
+    cleanup-grace-hours: ${EDUTRACK_STORAGE_CLEANUP_GRACE_HOURS:24}
+    cleanup-batch-size: ${EDUTRACK_STORAGE_CLEANUP_BATCH_SIZE:100}
+    cleanup-interval-ms: ${EDUTRACK_STORAGE_CLEANUP_INTERVAL_MS:86400000}
 
 application:
   security:
@@ -63,6 +87,13 @@ application:
       secret-key: ${JWT_SECRET_KEY}
 
       expiration: 86400000
+
+mpesa:
+  till-number: ${MPESA_TILL_NUMBER}
+  short-code: ${MPESA_SHORT_CODE}
+  passkey: ${MPESA_PASSKEY}
+  environment: ${MPESA_ENVIRONMENT}
+  callback-url: ${MPESA_CALLBACK_URL:https://halfhearted-shavonda-unedificial.ngrok-free.dev/api/v1/payments/callback}
 
 # Set edutrack.bootstrap.token from an environment variable for the first
 # administrator only, then remove the variable after signup succeeds.

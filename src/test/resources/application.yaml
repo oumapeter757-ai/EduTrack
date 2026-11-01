@@ -19,3 +19,14 @@ application:
     jwt:
       secret-key: 404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970
       expiration: 86400000
+
+edutrack:
+  storage:
+    base-path: /tmp/edutrack-test-uploads
+    max-file-size: 10485760
+    school-quota-bytes: 1073741824
+    allowed-extensions: pdf,doc,docx,ppt,pptx,xls,xlsx,txt,png,jpg,jpeg
+    min-free-bytes: 104857600
+    cleanup-grace-hours: 1
+    cleanup-batch-size: 100
+    cleanup-interval-ms: 86400000

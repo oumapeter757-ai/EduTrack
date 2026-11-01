@@ -80,7 +80,7 @@ public class SchoolController {
      * Retrieve the currently logged-in user's school profile.
      */
     @GetMapping("/me")
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER', 'STUDENT', 'PARENT')")
     public ResponseEntity<ApiResponse<SchoolResponseDto>> getCurrentSchool(
             @AuthenticationPrincipal UserPrincipal principal) {
         SchoolResponseDto response = schoolService.getCurrentSchool(principal.getSchoolId());
@@ -91,7 +91,7 @@ public class SchoolController {
      * Retrieve school details by ID (SUPER_ADMIN or any authenticated user of this school).
      */
     @GetMapping("/{id}")
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER', 'STUDENT', 'PARENT')")
     public ResponseEntity<ApiResponse<SchoolResponseDto>> getSchoolById(
             @PathVariable Long id,
             @AuthenticationPrincipal UserPrincipal principal) {

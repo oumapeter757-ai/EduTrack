@@ -46,7 +46,7 @@ public class StreamController {
     }
 
     @GetMapping("/class-level/{classLevelId}")
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER', 'STUDENT', 'PARENT')")
     public ResponseEntity<ApiResponse<List<StreamResponseDto>>> getStreamsByClassLevel(
             @PathVariable Long classLevelId, @AuthenticationPrincipal UserPrincipal principal) {
         List<StreamResponseDto> response = streamService.getStreamsByClassLevel(classLevelId, principal);
@@ -54,7 +54,7 @@ public class StreamController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER', 'STUDENT', 'PARENT')")
     public ResponseEntity<ApiResponse<StreamResponseDto>> getStreamById(
             @PathVariable Long id, @AuthenticationPrincipal UserPrincipal principal) {
         StreamResponseDto response = streamService.getStreamById(id, principal);

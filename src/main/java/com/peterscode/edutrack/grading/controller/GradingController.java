@@ -34,7 +34,7 @@ public class GradingController {
     }
 
     @GetMapping("/scales")
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasAnyRole('SCHOOL_ADMIN', 'SUPER_ADMIN', 'TEACHER', 'STUDENT', 'PARENT')")
     public ResponseEntity<List<GradingViews.GradeScaleView>> gradeScales(
             @RequestParam Long schoolId,
             UserPrincipal principal) {
@@ -63,7 +63,7 @@ public class GradingController {
     }
 
     @GetMapping("/assessment-types")
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasAnyRole('SCHOOL_ADMIN', 'SUPER_ADMIN', 'TEACHER', 'STUDENT', 'PARENT')")
     public ResponseEntity<List<GradingViews.AssessmentTypeView>> assessmentTypes(
             @RequestParam Long schoolId,
             UserPrincipal principal) {
@@ -81,7 +81,7 @@ public class GradingController {
     }
 
     @GetMapping("/assessment-types/{id}/papers")
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasAnyRole('SCHOOL_ADMIN', 'SUPER_ADMIN', 'TEACHER', 'STUDENT', 'PARENT')")
     public ResponseEntity<List<GradingViews.AssessmentPaperView>> assessmentPapers(
             @RequestParam Long schoolId,
             @PathVariable Long id,
@@ -103,7 +103,7 @@ public class GradingController {
     }
 
     @GetMapping("/subjects/{subjectId}/assessments")
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasAnyRole('SCHOOL_ADMIN', 'SUPER_ADMIN', 'TEACHER', 'STUDENT', 'PARENT')")
     public ResponseEntity<List<GradingViews.SubjectAssessmentView>> subjectAssessments(
             @RequestParam Long schoolId,
             @RequestParam Long termId,

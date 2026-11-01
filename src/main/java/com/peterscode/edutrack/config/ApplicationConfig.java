@@ -14,7 +14,6 @@ import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.DefaultAuthenticationEventPublisher;
 import org.springframework.security.authentication.AuthenticationEventPublisher;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
-import org.springframework.security.core.userdetails.UserDetailsChecker;
 import org.springframework.security.authentication.AccountStatusUserDetailsChecker;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -31,7 +30,7 @@ public class ApplicationConfig {
     public AuthenticationProvider authenticationProvider() {
         DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider(userDetailsService);
         authProvider.setPasswordEncoder(passwordEncoder());
-        authProvider.setPreAuthenticationChecks(userDetails -> {});
+        authProvider.setPreAuthenticationChecks(_ -> {});
         authProvider.setPostAuthenticationChecks(new AccountStatusUserDetailsChecker());
         return authProvider;
     }
