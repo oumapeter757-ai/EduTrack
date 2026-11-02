@@ -9,3 +9,8 @@ spring:
 
   jpa:
     show-sql: true
+
+management:
+  health:
+    mail:
+      enabled: false

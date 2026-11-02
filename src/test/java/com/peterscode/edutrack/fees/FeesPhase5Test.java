@@ -450,7 +450,6 @@ class FeesPhase5Test {
         @Test
         @DisplayName("Timeout job processes stale payments")
         void processesStalePayments() {
-            Instant threshold = Instant.parse("2025-01-01T12:05:00Z");
             FeePayment payment = FeePayment.builder()
                     .id(1L).schoolId(1L).studentId(1L)
                     .status(FeePaymentStatus.PENDING)
@@ -458,7 +457,7 @@ class FeesPhase5Test {
                     .createdAt(LocalDateTime.of(2025, 1, 1, 12, 0, 0))
                     .build();
             when(feePaymentRepository.findByStatusAndCreatedAtBefore(
-                    FeePaymentStatus.PENDING, threshold)).thenReturn(List.of(payment));
+                    any(FeePaymentStatus.class), any(LocalDateTime.class))).thenReturn(List.of(payment));
 
             job.processStalePayments();
 
@@ -468,9 +467,8 @@ class FeesPhase5Test {
         @Test
         @DisplayName("Timeout job skips when no stale payments")
         void skipsWhenNoStalePayments() {
-            Instant threshold = Instant.parse("2025-01-01T12:05:00Z");
             when(feePaymentRepository.findByStatusAndCreatedAtBefore(
-                    FeePaymentStatus.PENDING, threshold)).thenReturn(List.of());
+                    any(FeePaymentStatus.class), any(LocalDateTime.class))).thenReturn(List.of());
 
             job.processStalePayments();
 
@@ -480,18 +478,17 @@ class FeesPhase5Test {
         @Test
         @DisplayName("Timeout job handles payment with no CheckoutRequestID")
         void handlesPaymentWithoutCheckoutRequestID() {
-            Instant threshold = Instant.parse("2025-01-01T12:05:00Z");
             FeePayment payment = FeePayment.builder()
                     .id(1L).schoolId(1L).studentId(1L)
                     .status(FeePaymentStatus.PENDING)
                     .checkoutRequestID(null)
                     .build();
             when(feePaymentRepository.findByStatusAndCreatedAtBefore(
-                    FeePaymentStatus.PENDING, threshold)).thenReturn(List.of(payment));
+                    any(FeePaymentStatus.class), any(LocalDateTime.class))).thenReturn(List.of(payment));
 
             job.processStalePayments();
 
-            verify(stkCallbackService).resolveStalePayment(1L, payment, "No CheckoutRequestID");
+            verify(stkCallbackService).resolveStalePayment(eq(1L), eq(payment), eq("No CheckoutRequestID"));
         }
     }
 

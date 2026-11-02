@@ -11,7 +11,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
-import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.util.List;
 
 /**
@@ -39,7 +41,13 @@ public class StkPushTimeoutJob {
     @Scheduled(fixedRate = 300000)
     @Transactional
     public void processStalePayments() {
-        Instant threshold = Instant.now(clock).minusSeconds(TIMEOUT_MINUTES * 60L);
+        // Compute cutoff as LocalDateTime in the same zone as auditing (JVM default zone).
+        // The Clock bean is UTC, so convert to JVM default zone to match createdAt values.
+        LocalDateTime threshold = LocalDateTime.now(clock)
+                .atZone(ZoneOffset.UTC)
+                .withZoneSameInstant(ZoneId.systemDefault())
+                .toLocalDateTime()
+                .minusMinutes(TIMEOUT_MINUTES);
         List<FeePayment> stalePayments = feePaymentRepository
                 .findByStatusAndCreatedAtBefore(FeePaymentStatus.PENDING, threshold);
 
