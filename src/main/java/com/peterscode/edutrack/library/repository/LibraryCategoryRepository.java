@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 
 @Repository
@@ -19,6 +20,9 @@ public interface LibraryCategoryRepository extends JpaRepository<LibraryCategory
 
     @Query("SELECT c FROM LibraryCategory c WHERE c.schoolId = :schoolId AND c.active = true")
     Page<LibraryCategory> findBySchoolIdAndActiveTrue(@Param("schoolId") Long schoolId, Pageable pageable);
+
+    @Query("SELECT c FROM LibraryCategory c WHERE c.schoolId = :schoolId AND c.active = true")
+    List<LibraryCategory> findBySchoolIdAndActiveTrue(@Param("schoolId") Long schoolId);
 
     Optional<LibraryCategory> findBySchoolIdAndId(Long schoolId, Long id);
 

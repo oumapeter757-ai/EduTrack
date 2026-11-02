@@ -95,7 +95,7 @@ public class RedisCacheConfig {
         return new CacheErrorHandler() {
             @Override
             public void handleCacheGetError(RuntimeException exception, org.springframework.cache.Cache cache, Object key) {
-                String cacheName = cache != null ? cache.getName() : "unknown";
+                String cacheName = cache.getName();
                 String errorType = exception.getClass().getSimpleName();
                 log.warn("Cache get error in '{}': {}", cacheName, errorType);
                 meterRegistry.counter("edutrack.cache.error", "cache", cacheName, "operation", "get", "error", errorType).increment();
@@ -103,7 +103,7 @@ public class RedisCacheConfig {
 
             @Override
             public void handleCachePutError(RuntimeException exception, org.springframework.cache.Cache cache, Object key, Object value) {
-                String cacheName = cache != null ? cache.getName() : "unknown";
+                String cacheName = cache.getName();
                 String errorType = exception.getClass().getSimpleName();
                 log.warn("Cache put error in '{}': {}", cacheName, errorType);
                 meterRegistry.counter("edutrack.cache.error", "cache", cacheName, "operation", "put", "error", errorType).increment();
@@ -111,7 +111,7 @@ public class RedisCacheConfig {
 
             @Override
             public void handleCacheEvictError(RuntimeException exception, org.springframework.cache.Cache cache, Object key) {
-                String cacheName = cache != null ? cache.getName() : "unknown";
+                String cacheName = cache.getName();
                 String errorType = exception.getClass().getSimpleName();
                 log.warn("Cache evict error in '{}': {}", cacheName, errorType);
                 meterRegistry.counter("edutrack.cache.error", "cache", cacheName, "operation", "evict", "error", errorType).increment();
@@ -119,7 +119,7 @@ public class RedisCacheConfig {
 
             @Override
             public void handleCacheClearError(RuntimeException exception, org.springframework.cache.Cache cache) {
-                String cacheName = cache != null ? cache.getName() : "unknown";
+                String cacheName = cache.getName();
                 String errorType = exception.getClass().getSimpleName();
                 log.warn("Cache clear error in '{}': {}", cacheName, errorType);
                 meterRegistry.counter("edutrack.cache.error", "cache", cacheName, "operation", "clear", "error", errorType).increment();

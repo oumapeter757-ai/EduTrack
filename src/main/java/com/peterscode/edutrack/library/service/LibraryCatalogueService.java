@@ -89,11 +89,36 @@ public class LibraryCatalogueService {
         return toCategoryView(categoryRepository.save(category));
     }
 
+    /**
+     * List categories with pagination.
+     * <p>
+     * NOT cached — paginated search results are out of scope per P3.
+     * The underlying category list is cached via {@link #listAllCategories(Long)}.
+     */
+    @Transactional(readOnly = true)
+    public Page<LibraryViews.CategoryView> listCategories(Long schoolId, Pageable pageable) {
+        // Use the cached list if available, otherwise load from DB
+        List<LibraryViews.CategoryView> all = listAllCategories(schoolId);
+        int start = (int) pageable.getOffset();
+        int end = Math.min((start + pageable.getPageSize()), all.size());
+        if (start > all.size()) {
+            return new org.springframework.data.domain.PageImpl<>(List.of(), pageable, all.size());
+        }
+        List<LibraryViews.CategoryView> pageContent = all.subList(start, end);
+        return new org.springframework.data.domain.PageImpl<>(pageContent, pageable, all.size());
+    }
+
+    /**
+     * Cache-safe category list (no pagination metadata).
+     * Caches the full list of active categories for a school.
+     */
     @Transactional(readOnly = true)
     @Cacheable(value = "library-categories", key = "#schoolId", unless = "#result == null")
-    public Page<LibraryViews.CategoryView> listCategories(Long schoolId, Pageable pageable) {
-        return categoryRepository.findBySchoolIdAndActiveTrue(schoolId, pageable)
-                .map(this::toCategoryView);
+    public List<LibraryViews.CategoryView> listAllCategories(Long schoolId) {
+        return categoryRepository.findBySchoolIdAndActiveTrue(schoolId)
+                .stream()
+                .map(this::toCategoryView)
+                .toList();
     }
 
     @Transactional(readOnly = true)

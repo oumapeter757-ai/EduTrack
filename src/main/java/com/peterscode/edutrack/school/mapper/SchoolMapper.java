@@ -101,6 +101,45 @@ public class SchoolMapper {
                 .build();
     }
 
+    /**
+     * Map a school entity to a cache-safe DTO that excludes phone and email
+     * (P3: never cache phone numbers or emails of people).
+     */
+    public SchoolProfileCacheDto toCacheDto(School school) {
+        if (school == null) {
+            return null;
+        }
+
+        return SchoolProfileCacheDto.builder()
+                .id(school.getId())
+                .name(school.getName())
+                .code(school.getCode())
+                .subdomain(school.getSubdomain())
+                .websiteUrl(school.getWebsiteUrl())
+                .logoUrl(school.getLogoUrl())
+                .addressLine1(school.getAddressLine1())
+                .addressLine2(school.getAddressLine2())
+                .city(school.getCity())
+                .state(school.getState())
+                .country(school.getCountry())
+                .postalCode(school.getPostalCode())
+                .address(school.getAddress())
+                .timezone(school.getTimezone())
+                .currency(school.getCurrency())
+                .subscriptionTier(school.getSubscriptionTier())
+                .subscriptionStatus(school.getSubscriptionStatus())
+                .subscriptionPlan(school.getSubscriptionTier() != null ? school.getSubscriptionTier().name() : null)
+                .subscriptionStartDate(school.getSubscriptionStartDate())
+                .subscriptionEndDate(school.getSubscriptionEndDate())
+                .enabledModules(school.getEnabledModules() != null
+                        ? enumSet(school.getEnabledModules())
+                        : EnumSet.noneOf(ServiceModule.class))
+                .maxStudents(school.getMaxStudents())
+                .maxTeachers(school.getMaxTeachers())
+                .active(school.isActive())
+                .build();
+    }
+
     public void updateEntityFromProfileDto(UpdateSchoolProfileRequestDto dto, School school) {
         if (dto == null || school == null) {
             return;

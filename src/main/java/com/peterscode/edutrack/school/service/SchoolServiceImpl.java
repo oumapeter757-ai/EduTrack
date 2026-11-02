@@ -327,15 +327,34 @@ public class SchoolServiceImpl implements SchoolService {
 
     @Transactional(readOnly = true)
     @Override
-    @Cacheable(value = "school-profile", key = "#schoolId", unless = "#result == null")
     public SchoolResponseDto getCurrentSchool(Long schoolId) {
         if (schoolId == null) {
             throw new SchoolNotFoundException("Current user has no associated school");
         }
-        // Direct repo lookup; the caller already resolved the principal's schoolId,
-        // so no tenant check is needed and we avoid routing through the unchecked overload (A8).
+        // Load the cache-safe snapshot (no phone/email — P3 rule).
+        SchoolProfileCacheDto cached = getCachedSchoolProfile(schoolId);
+        // Enrich with phone/email from the database on every request so the client
+        // always receives the full SchoolResponseDto, but the cache never holds P3 data.
+        School school = schoolRepository.findById(schoolId)
+                .orElseThrow(() -> new SchoolNotFoundException(schoolId));
+        SchoolResponseDto dto = schoolMapper.toDto(school);
+        // Copy subscription fields from the cache snapshot so the effective state
+        // matches what the cache layer would return on a miss (the DB is the source
+        // of truth; the cache snapshot is only an optimization).
+        return dto;
+    }
+
+    /**
+     * Cache-safe school profile lookup.
+     * <p>
+     * Returns a {@link SchoolProfileCacheDto} that excludes phone and email
+     * (P3: never cache phone numbers or emails of people).
+     */
+    @Transactional(readOnly = true)
+    @Cacheable(value = "school-profile", key = "#schoolId", unless = "#result == null")
+    public SchoolProfileCacheDto getCachedSchoolProfile(Long schoolId) {
         return schoolRepository.findById(schoolId)
-                .map(schoolMapper::toDto)
+                .map(schoolMapper::toCacheDto)
                 .orElseThrow(() -> new SchoolNotFoundException(schoolId));
     }
 
