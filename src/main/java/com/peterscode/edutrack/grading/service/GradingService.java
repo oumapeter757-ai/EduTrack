@@ -31,6 +31,8 @@ import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -60,6 +62,7 @@ public class GradingService {
     // ==================== Grade Scale ====================
 
     @Transactional
+    @CacheEvict(value = "gradescales", key = "#schoolId")
     public GradingViews.GradeScaleView createGradeScale(Long schoolId, GradingRequests.CreateGradeScaleRequest request, UserPrincipal principal) {
         requireAdmin(principal);
         AcademicYear year = academicYearRepository.findBySchoolIdAndId(schoolId, request.academicYearId())
@@ -88,6 +91,7 @@ public class GradingService {
     }
 
     @Transactional
+    @CacheEvict(value = "gradescales", key = "#schoolId")
     public GradingViews.GradeScaleView updateGradeScale(Long schoolId, Long scaleId, GradingRequests.CreateGradeScaleRequest request, UserPrincipal principal) {
         requireAdmin(principal);
         GradeScale scale = gradeScaleRepository.findBySchoolIdAndId(schoolId, scaleId)
@@ -114,6 +118,7 @@ public class GradingService {
     }
 
     @Transactional(readOnly = true)
+    @Cacheable(value = "gradescales", key = "#schoolId", unless = "#result == null")
     public List<GradingViews.GradeScaleView> gradeScales(Long schoolId, UserPrincipal principal) {
         List<GradeScale> scales = gradeScaleRepository.findBySchoolIdAndActiveTrue(schoolId);
         return scales.stream().map(s -> {
@@ -125,6 +130,7 @@ public class GradingService {
     // ==================== Assessment Type ====================
 
     @Transactional
+    @CacheEvict(value = "assessmenttypes", key = "#schoolId")
     public GradingViews.AssessmentTypeView createAssessmentType(Long schoolId, GradingRequests.CreateAssessmentTypeRequest request, UserPrincipal principal) {
         requireAdmin(principal);
         int maxOrder = assessmentTypeRepository.findBySchoolIdAndActiveTrueOrderBySortOrder(schoolId).size();
@@ -140,12 +146,14 @@ public class GradingService {
     }
 
     @Transactional(readOnly = true)
+    @Cacheable(value = "assessmenttypes", key = "#schoolId", unless = "#result == null")
     public List<GradingViews.AssessmentTypeView> assessmentTypes(Long schoolId, UserPrincipal principal) {
         return assessmentTypeRepository.findBySchoolIdAndActiveTrueOrderBySortOrder(schoolId).stream()
                 .map(this::assessmentTypeView).collect(Collectors.toList());
     }
 
     @Transactional
+    @CacheEvict(value = "assessmentpapers", key = "T(String).valueOf(#typeId + ':' + #schoolId)")
     public GradingViews.AssessmentPaperView addAssessmentPaper(Long schoolId, Long typeId, GradingRequests.CreateAssessmentPaperRequest request, UserPrincipal principal) {
         requireAdmin(principal);
         AssessmentType type = assessmentTypeRepository.findBySchoolIdAndId(schoolId, typeId)
@@ -164,6 +172,7 @@ public class GradingService {
     }
 
     @Transactional(readOnly = true)
+    @Cacheable(value = "assessmentpapers", key = "T(String).valueOf(#typeId + ':' + #schoolId)", unless = "#result == null")
     public List<GradingViews.AssessmentPaperView> assessmentPapers(Long schoolId, Long typeId, UserPrincipal principal) {
         AssessmentType type = assessmentTypeRepository.findBySchoolIdAndId(schoolId, typeId)
                 .orElseThrow(() -> notFound("Assessment type not found"));

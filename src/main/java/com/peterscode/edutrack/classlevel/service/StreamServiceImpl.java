@@ -16,6 +16,8 @@ import com.peterscode.edutrack.user.entity.Role;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Pageable;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -32,6 +34,7 @@ public class StreamServiceImpl implements StreamService {
 
     @Transactional
     @Override
+    @CacheEvict(value = "streams", key = "T(String).valueOf(#requestDto.classLevelId + ':' + #principal.schoolId)")
     public StreamResponseDto createStream(CreateStreamRequestDto requestDto, UserPrincipal principal) {
         ClassLevel classLevel = classLevelRepository.findById(requestDto.getClassLevelId())
                 .orElseThrow(() -> new ClassLevelNotFoundException(requestDto.getClassLevelId()));
@@ -77,6 +80,7 @@ public class StreamServiceImpl implements StreamService {
 
     @Transactional(readOnly = true)
     @Override
+    @Cacheable(value = "streams", key = "T(String).valueOf(#classLevelId + ':' + #principal.schoolId)", unless = "#result == null")
     public List<StreamResponseDto> getStreamsByClassLevel(Long classLevelId, UserPrincipal principal) {
         ClassLevel classLevel = classLevelRepository.findById(classLevelId)
                 .orElseThrow(() -> new ClassLevelNotFoundException(classLevelId));
@@ -87,6 +91,7 @@ public class StreamServiceImpl implements StreamService {
 
     @Transactional
     @Override
+    @CacheEvict(value = "streams", key = "T(String).valueOf(#requestDto.classLevelId + ':' + #principal.schoolId)")
     public StreamResponseDto updateStream(Long id, UpdateStreamRequestDto requestDto, UserPrincipal principal) {
         Stream entity = streamRepository.findById(id)
                 .orElseThrow(() -> new StreamNotFoundException(id));
@@ -109,6 +114,7 @@ public class StreamServiceImpl implements StreamService {
 
     @Transactional
     @Override
+    @CacheEvict(value = "streams", allEntries = true)
     public void deleteStream(Long id, UserPrincipal principal) {
         Stream entity = streamRepository.findById(id)
                 .orElseThrow(() -> new StreamNotFoundException(id));

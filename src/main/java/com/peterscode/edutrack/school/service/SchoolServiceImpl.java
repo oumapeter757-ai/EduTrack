@@ -26,6 +26,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import com.peterscode.edutrack.shared.PageableSortValidator;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -80,6 +82,7 @@ public class SchoolServiceImpl implements SchoolService {
 
     @Transactional
     @Override
+    @CacheEvict(value = {"school-profile", "school-public"}, allEntries = true)
     public SchoolResponseDto createSchool(CreateSchoolRequestDto requestDto) {
         String normalizedCode = requestDto.getCode().toUpperCase().trim();
         String normalizedSubdomain = requestDto.getSubdomain().toLowerCase().trim();
@@ -113,6 +116,7 @@ public class SchoolServiceImpl implements SchoolService {
 
     @Transactional
     @Override
+    @CacheEvict(value = {"school-profile", "school-public"}, allEntries = true)
     public SchoolResponseDto updateSchool(Long id, UpdateSchoolRequestDto requestDto) {
         School existing = schoolRepository.findById(id)
                 .orElseThrow(() -> new SchoolNotFoundException(id));
@@ -135,6 +139,7 @@ public class SchoolServiceImpl implements SchoolService {
 
     @Transactional
     @Override
+    @CacheEvict(value = {"school-profile", "school-public"}, allEntries = true)
     public SchoolResponseDto updateSchoolProfile(Long id, UpdateSchoolProfileRequestDto requestDto,
                                                  UserPrincipal principal) {
         School existing = schoolRepository.findById(id)
@@ -153,6 +158,7 @@ public class SchoolServiceImpl implements SchoolService {
 
     @Transactional
     @Override
+    @CacheEvict(value = {"school-profile", "school-public"}, allEntries = true)
     public SchoolResponseDto updateSchoolSubscription(Long id, UpdateSchoolSubscriptionRequestDto requestDto) {
         School existing = schoolRepository.findById(id)
                 .orElseThrow(() -> new SchoolNotFoundException(id));
@@ -247,6 +253,7 @@ public class SchoolServiceImpl implements SchoolService {
 
     @Transactional(readOnly = true)
     @Override
+    @Cacheable(value = "school-public", key = "#code.toUpperCase()", unless = "#result == null")
     public PublicSchoolProfileDto getSchoolByCode(String code) {
         authRateLimiter.checkPublicLookup();
         String normalizedCode = normalizeLookupKey(code, "code", 50);
@@ -257,6 +264,7 @@ public class SchoolServiceImpl implements SchoolService {
 
     @Transactional(readOnly = true)
     @Override
+    @Cacheable(value = "school-public", key = "#subdomain.toLowerCase()", unless = "#result == null")
     public PublicSchoolProfileDto getPublicSchoolBySubdomain(String subdomain) {
         authRateLimiter.checkPublicLookup();
         String normalizedSubdomain = normalizeLookupKey(subdomain, "subdomain", 100);
@@ -319,6 +327,7 @@ public class SchoolServiceImpl implements SchoolService {
 
     @Transactional(readOnly = true)
     @Override
+    @Cacheable(value = "school-profile", key = "#schoolId", unless = "#result == null")
     public SchoolResponseDto getCurrentSchool(Long schoolId) {
         if (schoolId == null) {
             throw new SchoolNotFoundException("Current user has no associated school");
@@ -332,6 +341,7 @@ public class SchoolServiceImpl implements SchoolService {
 
     @Transactional
     @Override
+    @CacheEvict(value = {"school-profile", "school-public"}, allEntries = true)
     public void toggleSchoolStatus(Long id, boolean active) {
         School school = schoolRepository.findById(id)
                 .orElseThrow(() -> new SchoolNotFoundException(id));
@@ -342,6 +352,7 @@ public class SchoolServiceImpl implements SchoolService {
 
     @Transactional
     @Override
+    @CacheEvict(value = {"school-profile", "school-public"}, allEntries = true)
     public SchoolResponseDto updateEnabledModules(Long id, Set<ServiceModule> modules) {
         School school = schoolRepository.findById(id)
                 .orElseThrow(() -> new SchoolNotFoundException(id));
@@ -413,6 +424,7 @@ public class SchoolServiceImpl implements SchoolService {
 
     @Transactional
     @Override
+    @CacheEvict(value = {"school-profile", "school-public"}, allEntries = true)
     public void activateSubscriptionByPayment(Long invoiceId) {
         PaymentInvoice invoice = paymentInvoiceRepository.findById(invoiceId)
                 .orElseThrow(() -> new com.peterscode.edutrack.shared.exception.ResourceNotFoundException(

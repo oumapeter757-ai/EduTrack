@@ -15,6 +15,8 @@ import com.peterscode.edutrack.user.entity.Role;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Pageable;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -31,6 +33,7 @@ public class ClassLevelServiceImpl implements ClassLevelService {
 
     @Transactional
     @Override
+    @CacheEvict(value = "classlevels", key = "#principal.schoolId")
     public ClassLevelResponseDto createClassLevel(CreateClassLevelRequestDto requestDto, UserPrincipal principal) {
         Long schoolId = resolveSchoolId(requestDto.getSchoolId(), principal);
         schoolRepository.findById(schoolId).filter(s -> s.isActive())
@@ -66,6 +69,7 @@ public class ClassLevelServiceImpl implements ClassLevelService {
 
     @Transactional(readOnly = true)
     @Override
+    @Cacheable(value = "classlevels", key = "#principal.schoolId", unless = "#result == null")
     public List<ClassLevelResponseDto> getActiveClassLevels(UserPrincipal principal) {
         Long schoolId = resolveSchoolId(null, principal);
         return classLevelRepository.findBySchoolIdAndActiveTrueOrderBySortOrderAsc(schoolId)
@@ -74,6 +78,7 @@ public class ClassLevelServiceImpl implements ClassLevelService {
 
     @Transactional
     @Override
+    @CacheEvict(value = "classlevels", key = "#principal.schoolId")
     public ClassLevelResponseDto updateClassLevel(Long id, UpdateClassLevelRequestDto requestDto, UserPrincipal principal) {
         ClassLevel entity = classLevelRepository.findById(id)
                 .orElseThrow(() -> new ClassLevelNotFoundException(id));
@@ -94,6 +99,7 @@ public class ClassLevelServiceImpl implements ClassLevelService {
 
     @Transactional
     @Override
+    @CacheEvict(value = "classlevels", key = "#principal.schoolId")
     public void deleteClassLevel(Long id, UserPrincipal principal) {
         ClassLevel entity = classLevelRepository.findById(id)
                 .orElseThrow(() -> new ClassLevelNotFoundException(id));

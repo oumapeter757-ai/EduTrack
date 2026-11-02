@@ -14,6 +14,8 @@ import com.peterscode.edutrack.timetable.repository.TermRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -31,6 +33,7 @@ public class FeeStructureService {
     private final TermRepository termRepository;
 
     @Transactional
+    @CacheEvict(value = "fee-structure", key = "T(String).valueOf(#result.id + ':' + #principal.schoolId)", condition = "#result != null")
     public FeeStructureView create(UserPrincipal principal, CreateFeeStructureRequestDto request) {
         FeesAccessGuard.assertAdminOrAccountant(principal);
         Long schoolId = principal.getSchoolId();
@@ -83,6 +86,7 @@ public class FeeStructureService {
     }
 
     @Transactional(readOnly = true)
+    @Cacheable(value = "fee-structure", key = "T(String).valueOf(#id + ':' + #principal.schoolId)", unless = "#result == null")
     public FeeStructureView getById(UserPrincipal principal, Long id) {
         FeesAccessGuard.assertAnyFeeViewer(principal);
         Long schoolId = principal.getSchoolId();
@@ -93,6 +97,7 @@ public class FeeStructureService {
     }
 
     @Transactional
+    @CacheEvict(value = "fee-structure", key = "T(String).valueOf(#id + ':' + #principal.schoolId)")
     public void activate(UserPrincipal principal, Long id) {
         FeesAccessGuard.assertAdminOrAccountant(principal);
         Long schoolId = principal.getSchoolId();

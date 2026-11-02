@@ -18,6 +18,8 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -39,6 +41,7 @@ public class LibraryCatalogueService {
     // ==================== Categories ====================
 
     @Transactional
+    @CacheEvict(value = "library-categories", key = "#schoolId")
     public LibraryViews.CategoryView createCategory(Long schoolId, LibraryRequests.CreateCategoryRequest request) {
         if (categoryRepository.existsBySchoolIdAndCode(schoolId, request.code().trim())) {
             throw new LibraryRuleException("DUPLICATE_CATEGORY_CODE", HttpStatus.CONFLICT,
@@ -59,6 +62,7 @@ public class LibraryCatalogueService {
     }
 
     @Transactional
+    @CacheEvict(value = "library-categories", key = "#schoolId")
     public LibraryViews.CategoryView updateCategory(Long schoolId, Long id, LibraryRequests.UpdateCategoryRequest request) {
         LibraryCategory category = categoryRepository.findBySchoolIdAndId(schoolId, id)
                 .orElseThrow(() -> new LibraryRuleException("CATEGORY_NOT_FOUND", HttpStatus.NOT_FOUND,
@@ -86,6 +90,7 @@ public class LibraryCatalogueService {
     }
 
     @Transactional(readOnly = true)
+    @Cacheable(value = "library-categories", key = "#schoolId", unless = "#result == null")
     public Page<LibraryViews.CategoryView> listCategories(Long schoolId, Pageable pageable) {
         return categoryRepository.findBySchoolIdAndActiveTrue(schoolId, pageable)
                 .map(this::toCategoryView);

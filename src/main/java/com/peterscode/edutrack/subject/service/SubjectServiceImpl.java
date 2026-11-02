@@ -26,6 +26,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -44,6 +46,7 @@ public class SubjectServiceImpl implements SubjectService {
 
     @Transactional
     @Override
+    @CacheEvict(value = "subjects", key = "#principal.schoolId")
     public SubjectResponseDto createSubject(CreateSubjectRequestDto requestDto, UserPrincipal principal) {
         Long schoolId = resolveSchoolIdForCreation(requestDto.getSchoolId(), principal);
 
@@ -119,6 +122,7 @@ public class SubjectServiceImpl implements SubjectService {
 
     @Transactional(readOnly = true)
     @Override
+    @Cacheable(value = "subjects", key = "#principal.schoolId", unless = "#result == null")
     public List<SubjectSummaryDto> getActiveSubjects(Long explicitSchoolId, UserPrincipal principal) {
         Long schoolId = resolveSchoolIdForQuery(explicitSchoolId, principal);
         if (schoolId == null) {
@@ -152,6 +156,7 @@ public class SubjectServiceImpl implements SubjectService {
 
     @Transactional
     @Override
+    @CacheEvict(value = "subjects", key = "#principal.schoolId")
     public SubjectResponseDto updateSubject(Long id, UpdateSubjectRequestDto requestDto, UserPrincipal principal) {
         Subject subject = subjectRepository.findById(id)
                 .orElseThrow(() -> new SubjectNotFoundException(id));
@@ -180,6 +185,7 @@ public class SubjectServiceImpl implements SubjectService {
 
     @Transactional
     @Override
+    @CacheEvict(value = "subjects", key = "#principal.schoolId")
     public void deleteSubject(Long id, UserPrincipal principal) {
         Subject subject = subjectRepository.findById(id)
                 .orElseThrow(() -> new SubjectNotFoundException(id));

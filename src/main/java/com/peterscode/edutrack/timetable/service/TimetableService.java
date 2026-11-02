@@ -36,6 +36,8 @@ import java.util.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -114,6 +116,7 @@ public class TimetableService {
     }
 
     @Transactional
+    @CacheEvict(value = "periods", key = "#principal.schoolId")
     public PeriodView savePeriod(Long id, PeriodRequest request, UserPrincipal principal) {
         Long schoolId = schoolId(request.schoolId(), principal);
         requireAdmin(principal);
@@ -142,12 +145,14 @@ public class TimetableService {
     }
 
     @Transactional(readOnly = true)
+    @Cacheable(value = "periods", key = "#principal.schoolId", unless = "#result == null")
     public List<PeriodView> periods(Long explicitSchoolId, UserPrincipal principal) {
         Long schoolId = schoolId(explicitSchoolId, principal);
         return periodRepository.findBySchoolIdOrderBySortOrder(schoolId).stream().map(this::periodView).toList();
     }
 
     @Transactional
+    @CacheEvict(value = "rooms", key = "#principal.schoolId")
     public RoomView saveRoom(Long id, RoomRequest request, UserPrincipal principal) {
         Long schoolId = schoolId(request.schoolId(), principal);
         requireAdmin(principal);
@@ -165,12 +170,14 @@ public class TimetableService {
     }
 
     @Transactional(readOnly = true)
+    @Cacheable(value = "rooms", key = "#principal.schoolId", unless = "#result == null")
     public List<RoomView> rooms(Long explicitSchoolId, UserPrincipal principal) {
         Long schoolId = schoolId(explicitSchoolId, principal);
         return roomRepository.findBySchoolIdOrderByName(schoolId).stream().map(this::roomView).toList();
     }
 
     @Transactional
+    @CacheEvict(value = "curriculum", key = "T(String).valueOf(#request.classLevelId + ':' + #principal.schoolId)")
     public List<CurriculumView> saveCurriculum(CurriculumRequest request, UserPrincipal principal) {
         Long schoolId = schoolId(request.schoolId(), principal);
         requireAdmin(principal);
@@ -194,6 +201,7 @@ public class TimetableService {
     }
 
     @Transactional(readOnly = true)
+    @Cacheable(value = "curriculum", key = "T(String).valueOf(#classLevelId + ':' + #principal.schoolId)", unless = "#result == null")
     public List<CurriculumView> curriculum(Long classLevelId, Long explicitSchoolId, UserPrincipal principal) {
         Long schoolId = schoolId(explicitSchoolId, principal);
         requireClassLevel(schoolId, classLevelId);
@@ -327,6 +335,7 @@ public class TimetableService {
     }
 
     @Transactional
+    @CacheEvict(value = {"timetable-teacher", "timetable-student"}, allEntries = true)
     public LessonBatchView createLessons(LessonBatch request, UserPrincipal principal) {
         Long schoolId = schoolId(request.schoolId(), principal);
         requireAdmin(principal);
@@ -398,6 +407,7 @@ public class TimetableService {
     }
 
     @Transactional
+    @CacheEvict(value = {"timetable-teacher", "timetable-student"}, allEntries = true)
     public LessonView moveLesson(Long lessonId, MoveLessonRequest request, Long explicitSchoolId, UserPrincipal principal) {
         requireAdmin(principal);
         Long schoolId = schoolId(explicitSchoolId, principal);
@@ -428,6 +438,7 @@ public class TimetableService {
     }
 
     @Transactional
+    @CacheEvict(value = {"timetable-teacher", "timetable-student"}, allEntries = true)
     public void deleteLesson(Long lessonId, Long explicitSchoolId, UserPrincipal principal) {
         Long schoolId = schoolId(explicitSchoolId, principal);
         requireAdmin(principal);
@@ -452,6 +463,7 @@ public class TimetableService {
     }
 
     @Transactional
+    @CacheEvict(value = {"timetable-teacher", "timetable-student"}, allEntries = true)
     public PublishView publish(Long timetableId, Long explicitSchoolId, boolean acknowledgeIncomplete, UserPrincipal principal) {
         Long schoolId = schoolId(explicitSchoolId, principal);
         requireAdmin(principal);
@@ -473,6 +485,7 @@ public class TimetableService {
     }
 
     @Transactional
+    @CacheEvict(value = {"timetable-teacher", "timetable-student"}, allEntries = true)
     public TimetableView unpublish(Long timetableId, Long explicitSchoolId, UserPrincipal principal) {
         Long schoolId = schoolId(explicitSchoolId, principal);
         requireAdmin(principal);
@@ -494,6 +507,7 @@ public class TimetableService {
     }
 
     @Transactional(readOnly = true)
+    @Cacheable(value = "timetable-teacher", key = "T(String).valueOf(#principal.id + ':' + #principal.schoolId)", unless = "#result == null || #result.isEmpty()")
     public List<TeacherLessonView> myTeacherLessons(UserPrincipal principal) {
         Long schoolId = schoolId(null, principal);
         Staff teacher = staffRepository.findBySchoolIdAndUserId(schoolId, principal.getId())
@@ -512,6 +526,7 @@ public class TimetableService {
     }
 
     @Transactional(readOnly = true)
+    @Cacheable(value = "timetable-student", key = "T(String).valueOf(#principal.id + ':' + #principal.schoolId)", unless = "#result == null || #result.isEmpty()")
     public List<StudentLessonView> myStudentLessons(UserPrincipal principal) {
         Long schoolId = schoolId(null, principal);
         Student student = studentRepository.findBySchoolIdAndUserId(schoolId, principal.getId())
