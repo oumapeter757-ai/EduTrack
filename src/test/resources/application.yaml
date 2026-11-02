@@ -21,6 +21,8 @@ application:
       expiration: 86400000
 
 edutrack:
+  fees:
+    encryption-key: YWRtaW4xMjM0NTY3ODkwYWRtaW4xMjM0NTY3ODkw
   storage:
     base-path: /tmp/edutrack-test-uploads
     max-file-size: 10485760
