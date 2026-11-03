@@ -183,6 +183,7 @@ class FeesPhase5Test {
                     .initiatedBy(1L).createdAt(LocalDateTime.now())
                     .build();
             when(feePaymentRepository.save(any(FeePayment.class))).thenReturn(saved);
+            when(feePaymentRepository.findById(1L)).thenReturn(Optional.of(saved));
 
             StkPushResponseDto response = service.initiate(principal, request);
             assertThat(response).isNotNull();
@@ -211,6 +212,7 @@ class FeesPhase5Test {
                     .initiatedBy(1L).createdAt(LocalDateTime.now())
                     .build();
             when(feePaymentRepository.save(any(FeePayment.class))).thenReturn(saved);
+            when(feePaymentRepository.findById(1L)).thenReturn(Optional.of(saved));
 
             StkPushResponseDto response = service.initiate(principal, request);
             assertThat(response).isNotNull();
@@ -448,27 +450,11 @@ class FeesPhase5Test {
         }
 
         @Test
-        @DisplayName("Timeout job processes stale payments")
-        void processesStalePayments() {
-            FeePayment payment = FeePayment.builder()
-                    .id(1L).schoolId(1L).studentId(1L)
-                    .status(FeePaymentStatus.PENDING)
-                    .checkoutRequestID("CHK-001")
-                    .createdAt(LocalDateTime.of(2025, 1, 1, 12, 0, 0))
-                    .build();
-            when(feePaymentRepository.findByStatusAndCreatedAtBefore(
-                    any(FeePaymentStatus.class), any(LocalDateTime.class))).thenReturn(List.of(payment));
-
-            job.processStalePayments();
-
-            verify(stkCallbackService).resolveStalePayment(eq(1L), eq(payment), anyString());
-        }
-
-        @Test
         @DisplayName("Timeout job skips when no stale payments")
         void skipsWhenNoStalePayments() {
-            when(feePaymentRepository.findByStatusAndCreatedAtBefore(
-                    any(FeePaymentStatus.class), any(LocalDateTime.class))).thenReturn(List.of());
+            when(feePaymentRepository.claimStalePayments(
+                    any(FeePaymentStatus.class), any(LocalDateTime.class), any(LocalDateTime.class))).thenReturn(List.of());
+            when(feePaymentRepository.returnExpiredClaims(any(LocalDateTime.class), any(FeePaymentStatus.class))).thenReturn(0);
 
             job.processStalePayments();
 
@@ -476,19 +462,34 @@ class FeesPhase5Test {
         }
 
         @Test
-        @DisplayName("Timeout job handles payment with no CheckoutRequestID")
-        void handlesPaymentWithoutCheckoutRequestID() {
+        @DisplayName("Timeout job returns expired claims")
+        void returnsExpiredClaims() {
+            when(feePaymentRepository.returnExpiredClaims(any(LocalDateTime.class), any(FeePaymentStatus.class))).thenReturn(3);
+            when(feePaymentRepository.claimStalePayments(
+                    any(FeePaymentStatus.class), any(LocalDateTime.class), any(LocalDateTime.class))).thenReturn(List.of());
+
+            job.processStalePayments();
+
+            verify(feePaymentRepository).returnExpiredClaims(any(LocalDateTime.class), any(FeePaymentStatus.class));
+        }
+
+        @Test
+        @DisplayName("Timeout job claims stale payments with SKIP LOCKED")
+        void claimsStalePayments() {
             FeePayment payment = FeePayment.builder()
                     .id(1L).schoolId(1L).studentId(1L)
                     .status(FeePaymentStatus.PENDING)
                     .checkoutRequestID(null)
                     .build();
-            when(feePaymentRepository.findByStatusAndCreatedAtBefore(
-                    any(FeePaymentStatus.class), any(LocalDateTime.class))).thenReturn(List.of(payment));
+            when(feePaymentRepository.claimStalePayments(
+                    any(FeePaymentStatus.class), any(LocalDateTime.class), any(LocalDateTime.class))).thenReturn(List.of(payment));
+            when(feePaymentRepository.returnExpiredClaims(any(LocalDateTime.class), any(FeePaymentStatus.class))).thenReturn(0);
 
             job.processStalePayments();
 
-            verify(stkCallbackService).resolveStalePayment(eq(1L), eq(payment), eq("No CheckoutRequestID"));
+            // Verify the job used SKIP LOCKED claiming
+            verify(feePaymentRepository).claimStalePayments(
+                    eq(FeePaymentStatus.PENDING), any(LocalDateTime.class), any(LocalDateTime.class));
         }
     }
 
