@@ -1,5 +1,6 @@
-package com.peterscode.edutrack.shared;
+package com.peterscode.edutrack.shared.repository;
 
+import com.peterscode.edutrack.shared.IdempotencyKey;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;

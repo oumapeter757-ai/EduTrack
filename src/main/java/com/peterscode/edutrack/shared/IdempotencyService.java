@@ -1,5 +1,6 @@
 package com.peterscode.edutrack.shared;
 
+import com.peterscode.edutrack.shared.repository.IdempotencyKeyRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
