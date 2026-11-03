@@ -71,6 +71,11 @@ public class Guardian extends BaseEntity {
   @Builder.Default
   boolean active = true;
 
+  @Version
+  @Column(name = "version", nullable = false)
+  @Builder.Default
+  Long version = 0L;
+
   public String getFullName() {
     return (firstName + " " + lastName).trim();
   }

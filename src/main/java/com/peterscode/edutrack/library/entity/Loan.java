@@ -7,7 +7,6 @@ import lombok.experimental.SuperBuilder;
 
 import java.time.Instant;
 import java.time.LocalDate;
-import java.util.UUID;
 
 @Entity
 @Table(name = "loans")
@@ -51,8 +50,8 @@ public class Loan extends BaseEntity {
     @Column(nullable = false, length = 20)
     private String status;
 
-    @Column(name = "active_marker", columnDefinition = "UUID")
-    private UUID activeMarker;
+    @Column(name = "active_marker", columnDefinition = "CHAR(36)")
+    private String activeMarker;
 
     @Version
     @Column(nullable = false)

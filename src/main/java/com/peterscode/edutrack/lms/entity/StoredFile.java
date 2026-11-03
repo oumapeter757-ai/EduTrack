@@ -5,6 +5,8 @@ import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
 
+import java.time.LocalDateTime;
+
 @Entity
 @Table(name = "stored_file")
 @Getter
@@ -42,4 +44,16 @@ public class StoredFile extends BaseEntity {
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 16)
     private FileStatus status;
+
+    // Job claim columns for SKIP LOCKED multi-instance safety
+    @Column(name = "claimed_by", length = 64)
+    private String claimedBy;
+
+    @Column(name = "claimed_until")
+    private LocalDateTime claimedUntil;
+
+    @Version
+    @Column(name = "version", nullable = false)
+    @Builder.Default
+    private Long version = 0L;
 }

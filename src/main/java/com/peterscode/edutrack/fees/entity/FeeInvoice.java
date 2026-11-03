@@ -74,4 +74,9 @@ public class FeeInvoice extends BaseEntity {
     @OneToMany(mappedBy = "invoice", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     private List<FeeInvoiceLine> lines = new ArrayList<>();
+
+    @Version
+    @Column(name = "version", nullable = false)
+    @Builder.Default
+    private Long version = 0L;
 }

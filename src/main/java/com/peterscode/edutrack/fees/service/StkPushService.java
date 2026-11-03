@@ -73,7 +73,6 @@ public class StkPushService {
      * @param request   the STK push request with studentId, amount, and optional phone
      * @return response with paymentId and PENDING status
      */
-    @Transactional
     public StkPushResponseDto initiate(UserPrincipal principal, StkPushRequestDto request) {
         if (principal.getRole() != Role.PARENT && principal.getRole() != Role.STUDENT) {
             throw new FeesRuleException("INSUFFICIENT_PERMISSION", FORBIDDEN,
@@ -104,6 +103,51 @@ public class StkPushService {
         String phone = resolvePhone(principal, request.phone());
         validatePhone(phone);
 
+        // Generate CheckoutRequestID placeholder — will be set after Mpesa call
+        String accountReference = "STK-" + schoolId + "-" + studentId;
+
+        // Step 1: Create and commit PENDING payment in a short transaction
+        Long paymentId = createPendingPayment(schoolId, studentId, phone, request.amount(), accountReference, principal.getId());
+
+        // Step 2: Call Mpesa OUTSIDE the DB transaction
+        StkPushResult result;
+        try {
+            result = mpesaClient.initiateStkPush(
+                    phone, request.amount(),
+                    stkCallbackUrl + "/" + generateCallbackTokenPath(schoolId),
+                    accountReference,
+                    "EduTrack Fee Payment");
+        } catch (Exception e) {
+            log.error("STK Push API call failed: paymentId={}", paymentId, e);
+            updatePaymentFailed(paymentId, "Mpesa API error: " + e.getMessage());
+            throw new FeesRuleException("PAYMENT_FAILED", INTERNAL_SERVER_ERROR,
+                    "Failed to initiate STK Push");
+        }
+
+        // Step 3: Update payment with Mpesa result in a new short transaction
+        FeePayment payment = updatePaymentResult(paymentId, result);
+
+        java.time.Instant createdInstant = payment.getCreatedAt() != null
+                ? payment.getCreatedAt().atZone(java.time.ZoneOffset.UTC).toInstant()
+                : null;
+        return new StkPushResponseDto(
+                payment.getId(),
+                payment.getStatus(),
+                payment.getAmount(),
+                payment.getCurrency(),
+                payment.getCheckoutRequestID(),
+                result.customerMessage(),
+                createdInstant
+        );
+    }
+
+    /**
+     * Create a PENDING payment record. Runs in its own transaction.
+     * Checks for existing pending payment and creates the new one atomically.
+     */
+    @Transactional
+    public Long createPendingPayment(Long schoolId, Long studentId, String phone,
+                                      BigDecimal amount, String accountReference, Long initiatedBy) {
         // Check no pending STK payment for this student
         Optional<FeePayment> pending = feePaymentRepository
                 .findBySchoolIdAndStudentIdAndStatus(schoolId, studentId, FeePaymentStatus.PENDING);
@@ -112,64 +156,55 @@ public class StkPushService {
                     "A pending payment already exists for this student");
         }
 
-        // Generate CheckoutRequestID placeholder — will be set after Mpesa call
-        String accountReference = "STK-" + schoolId + "-" + studentId;
-
-        // Create PENDING payment record first
         FeePayment payment = FeePayment.builder()
                 .schoolId(schoolId)
                 .studentId(studentId)
                 .channel(FeePaymentChannel.STK)
-                .amount(request.amount())
+                .amount(amount)
                 .currency("KES")
                 .payerPhoneMasked(maskPhone(phone))
                 .accountReference(accountReference)
                 .status(FeePaymentStatus.PENDING)
-                .initiatedBy(principal.getId())
+                .initiatedBy(initiatedBy)
                 .build();
         payment = feePaymentRepository.save(payment);
+        log.info("STK PENDING payment created: paymentId={}", payment.getId());
+        return payment.getId();
+    }
 
-        // Call Mpesa to initiate STK Push
-        try {
-            StkPushResult result = mpesaClient.initiateStkPush(
-                    phone, request.amount(),
-                    stkCallbackUrl + "/" + generateCallbackTokenPath(schoolId),
-                    accountReference,
-                    "EduTrack Fee Payment");
+    /**
+     * Update payment with the Mpesa result. Runs in its own transaction.
+     */
+    @Transactional
+    public FeePayment updatePaymentResult(Long paymentId, StkPushResult result) {
+        FeePayment payment = feePaymentRepository.findById(paymentId)
+                .orElseThrow(() -> new FeesRuleException("RESOURCE_NOT_FOUND", NOT_FOUND,
+                        "Payment not found"));
 
-            if (result.success()) {
-                payment.setCheckoutRequestID(result.checkoutRequestID());
-                payment = feePaymentRepository.save(payment);
-                log.info("STK Push initiated: paymentId={}, checkoutRequestID={}",
-                        payment.getId(), result.checkoutRequestID());
-            } else {
-                payment.setStatus(FeePaymentStatus.FAILED);
-                payment.setFailureReason(result.customerMessage());
-                payment = feePaymentRepository.save(payment);
-                log.warn("STK Push initiation failed: paymentId={}, reason={}",
-                        payment.getId(), result.customerMessage());
-            }
-
-            java.time.Instant createdInstant = payment.getCreatedAt() != null
-                    ? payment.getCreatedAt().atZone(java.time.ZoneOffset.UTC).toInstant()
-                    : null;
-            return new StkPushResponseDto(
-                    payment.getId(),
-                    payment.getStatus(),
-                    payment.getAmount(),
-                    payment.getCurrency(),
-                    payment.getCheckoutRequestID(),
-                    result.customerMessage(),
-                    createdInstant
-            );
-        } catch (Exception e) {
-            log.error("STK Push API call failed", e);
+        if (result.success()) {
+            payment.setCheckoutRequestID(result.checkoutRequestID());
+            log.info("STK Push initiated: paymentId={}, checkoutRequestID={}",
+                    payment.getId(), result.checkoutRequestID());
+        } else {
             payment.setStatus(FeePaymentStatus.FAILED);
-            payment.setFailureReason("Mpesa API error: " + e.getMessage());
-            feePaymentRepository.save(payment);
-            throw new FeesRuleException("PAYMENT_FAILED", INTERNAL_SERVER_ERROR,
-                    "Failed to initiate STK Push");
+            payment.setFailureReason(result.customerMessage());
+            log.warn("STK Push initiation failed: paymentId={}, reason={}",
+                    payment.getId(), result.customerMessage());
         }
+        return feePaymentRepository.save(payment);
+    }
+
+    /**
+     * Mark a payment as FAILED. Runs in its own transaction.
+     */
+    @Transactional
+    public void updatePaymentFailed(Long paymentId, String reason) {
+        FeePayment payment = feePaymentRepository.findById(paymentId)
+                .orElseThrow(() -> new FeesRuleException("RESOURCE_NOT_FOUND", NOT_FOUND,
+                        "Payment not found"));
+        payment.setStatus(FeePaymentStatus.FAILED);
+        payment.setFailureReason(reason);
+        feePaymentRepository.save(payment);
     }
 
     /**

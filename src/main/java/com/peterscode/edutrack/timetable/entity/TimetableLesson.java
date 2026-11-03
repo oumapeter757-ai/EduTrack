@@ -37,4 +37,9 @@ public class TimetableLesson extends BaseEntity {
     private Long periodId;
     @Column(name = "day_of_week", nullable = false)
     private Integer dayOfWeek;
+
+    @Version
+    @Column(name = "version", nullable = false)
+    @Builder.Default
+    private Long version = 0L;
 }

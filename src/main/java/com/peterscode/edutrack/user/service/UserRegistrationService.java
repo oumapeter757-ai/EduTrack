@@ -24,7 +24,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.annotation.Isolation;
 import org.springframework.beans.factory.annotation.Value;
 import jakarta.persistence.EntityManager;
 import java.nio.charset.StandardCharsets;
@@ -105,7 +104,7 @@ public class UserRegistrationService {
     /**
      * SCHOOL_ADMIN creates a TEACHER for their own school.
      */
-    @Transactional(isolation = Isolation.READ_COMMITTED)
+    @Transactional
     public UserResponseDto createTeacher(CreateSchoolUserRequestDto request, UserPrincipal creator) {
         validateCreatorRole(creator, Role.SCHOOL_ADMIN, Role.TEACHER);
         Long schoolId = requireSchool(creator);

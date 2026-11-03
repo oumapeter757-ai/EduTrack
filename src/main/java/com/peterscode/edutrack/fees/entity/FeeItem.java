@@ -37,4 +37,9 @@ public class FeeItem extends BaseEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "structure_id", nullable = false, insertable = false, updatable = false)
     private FeeStructure structure;
+
+    @Version
+    @Column(name = "version", nullable = false)
+    @Builder.Default
+    private Long version = 0L;
 }

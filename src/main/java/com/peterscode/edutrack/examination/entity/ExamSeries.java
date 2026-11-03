@@ -60,6 +60,11 @@ public class ExamSeries extends BaseEntity {
     @Builder.Default
     private List<ExamRegistration> registrations = new ArrayList<>();
 
+    @Version
+    @Column(name = "version", nullable = false)
+    @Builder.Default
+    private Long version = 0L;
+
     public enum SeriesStatus {
         DRAFT, REGISTRATION_OPEN, REGISTRATION_CLOSED, COMPLETED
     }

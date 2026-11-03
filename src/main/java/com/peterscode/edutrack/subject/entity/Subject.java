@@ -73,4 +73,9 @@ public class Subject extends BaseEntity {
     public void setElective(boolean isElective) {
         this.isElective = isElective;
     }
+
+    @Version
+    @Column(name = "version", nullable = false)
+    @Builder.Default
+    private Long version = 0L;
 }

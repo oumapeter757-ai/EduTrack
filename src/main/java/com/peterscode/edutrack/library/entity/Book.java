@@ -46,4 +46,9 @@ public class Book extends BaseEntity {
 
     @Column(nullable = false)
     private Boolean active;
+
+    @Version
+    @Column(name = "version", nullable = false)
+    @Builder.Default
+    private Long version = 0L;
 }

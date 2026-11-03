@@ -146,6 +146,11 @@ public class Student extends BaseEntity {
     @Builder.Default
     private boolean active = true;
 
+    @Version
+    @Column(name = "version", nullable = false)
+    @Builder.Default
+    private Long version = 0L;
+
     public void setStatus(StudentStatus status) {
         this.status = status;
         this.active = status == StudentStatus.ACTIVE;

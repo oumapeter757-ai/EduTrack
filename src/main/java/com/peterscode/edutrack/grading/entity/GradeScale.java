@@ -33,4 +33,9 @@ public class GradeScale extends BaseEntity {
     @OrderBy("sortOrder")
     @Builder.Default
     private List<GradeScaleRange> ranges = new ArrayList<>();
+
+    @Version
+    @Column(name = "version", nullable = false)
+    @Builder.Default
+    private Long version = 0L;
 }

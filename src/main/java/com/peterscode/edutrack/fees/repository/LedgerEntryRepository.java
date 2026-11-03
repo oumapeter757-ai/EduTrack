@@ -24,7 +24,8 @@ public interface LedgerEntryRepository extends JpaRepository<LedgerEntry, Long> 
     /**
      * Sum of all ledger entries for an account. Positive = owed, negative = paid.
      */
-    BigDecimal sumAmountBySchoolIdAndAccountId(Long schoolId, Long accountId);
+    @Query("SELECT SUM(le.amount) FROM LedgerEntry le WHERE le.schoolId = :schoolId AND le.accountId = :accountId")
+    BigDecimal sumAmountBySchoolIdAndAccountId(@Param("schoolId") Long schoolId, @Param("accountId") Long accountId);
 
     /**
      * Sum of PAYMENT-type ledger entries by day for reconciliation.

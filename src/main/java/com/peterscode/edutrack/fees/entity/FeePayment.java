@@ -9,6 +9,7 @@ import lombok.experimental.SuperBuilder;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.time.LocalDateTime;
 
 /**
  * A fee payment record. Idempotent by (school_id, channel, provider_receipt).
@@ -81,6 +82,13 @@ public class FeePayment extends BaseEntity {
 
     @Column(name = "confirmed_at")
     private Instant confirmedAt;
+
+    // Job claim columns for SKIP LOCKED multi-instance safety
+    @Column(name = "claimed_by", length = 64)
+    private String claimedBy;
+
+    @Column(name = "claimed_until")
+    private LocalDateTime claimedUntil;
 
     @Version
     @Builder.Default

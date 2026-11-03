@@ -55,4 +55,9 @@ public class ParentStudentMapping extends BaseEntity {
 
     @Column(name = "unlinked_at")
     private LocalDateTime unlinkedAt;
+
+    @Version
+    @Column(name = "version", nullable = false)
+    @Builder.Default
+    private Long version = 0L;
 }

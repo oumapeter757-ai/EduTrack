@@ -38,7 +38,6 @@ import com.peterscode.edutrack.shared.PhoneNumberNormalizer;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.annotation.Isolation;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -60,7 +59,7 @@ public class StudentServiceImpl implements StudentService {
     private final AcademicYearRepository academicYearRepository;
     private final StudentAuditService auditService;
 
-    @Transactional(isolation = Isolation.READ_COMMITTED)
+    @Transactional
     @Override
     public StudentResponseDto createStudent(CreateStudentRequestDto requestDto, UserPrincipal principal) {
         requirePrincipal(principal);
@@ -161,7 +160,7 @@ public class StudentServiceImpl implements StudentService {
         return studentMapper.toDto(student, principal.getRole());
     }
 
-    @Transactional(isolation = Isolation.READ_COMMITTED)
+    @Transactional
     @Override
     public StudentResponseDto updateStudent(Long id, UpdateStudentRequestDto requestDto, UserPrincipal principal) {
         requirePrincipal(principal);
@@ -214,7 +213,7 @@ public class StudentServiceImpl implements StudentService {
         return studentMapper.toDto(savedStudent, principal.getRole());
     }
 
-    @Transactional(isolation = Isolation.READ_COMMITTED)
+    @Transactional
     @Override
     public void bulkUpdateStatus(BulkStudentStatusUpdateRequestDto requestDto, UserPrincipal principal) {
         requirePrincipal(principal);

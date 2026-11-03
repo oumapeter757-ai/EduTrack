@@ -44,8 +44,8 @@ public class LibraryBorrowingService {
     public LibraryViews.LoanView issueBook(Long schoolId, LibraryRequests.IssueRequest request, UserPrincipal principal) {
         String bookNumber = request.bookNumber().trim().toUpperCase();
 
-        // 1. Lock copy first
-        BookCopy copy = copyRepository.findBySchoolIdAndBookNumber(schoolId, bookNumber)
+        // 1. PESSIMISTIC_WRITE lock on BookCopy first (lock order: copy → account)
+        BookCopy copy = copyRepository.lockBySchoolIdAndBookNumber(schoolId, bookNumber)
                 .orElseThrow(() -> new LibraryRuleException("BOOK_NUMBER_NOT_FOUND", HttpStatus.NOT_FOUND,
                         "Book copy not found"));
         if (!"AVAILABLE".equals(copy.getStatus())) {
@@ -62,8 +62,10 @@ public class LibraryBorrowingService {
         // 2. Resolve borrower
         BorrowerInfo borrower = resolveBorrower(schoolId, request.borrowerNumber());
 
-        // 3. Lock borrower account
-        LibraryBorrowerAccount account = getOrCreateAccount(schoolId, borrower.type(), borrower.id());
+        // 3. PESSIMISTIC_WRITE lock on borrower account (after copy lock)
+        LibraryBorrowerAccount account = accountRepository
+                .lockBySchoolIdAndBorrowerTypeAndBorrowerId(schoolId, borrower.type(), borrower.id())
+                .orElseGet(() -> getOrCreateAccount(schoolId, borrower.type(), borrower.id()));
 
         // 4. Get policy
         BorrowingPolicy policy = resolvePolicy(schoolId, borrower.type());
@@ -90,7 +92,7 @@ public class LibraryBorrowingService {
 
         // 6. Create loan
         LocalDate dueDate = today.plusDays(policy.getLoanDays());
-        UUID activeMarker = UUID.randomUUID();
+        String activeMarker = UUID.randomUUID().toString();
 
         Loan loan = Loan.builder()
                 .schoolId(schoolId)
@@ -126,7 +128,8 @@ public class LibraryBorrowingService {
     public LibraryViews.ReturnResult returnBook(Long schoolId, LibraryRequests.ReturnRequest request, UserPrincipal principal) {
         String bookNumber = request.bookNumber().trim().toUpperCase();
 
-        BookCopy copy = copyRepository.findBySchoolIdAndBookNumber(schoolId, bookNumber)
+        // PESSIMISTIC_WRITE lock on BookCopy first (lock order: copy → account)
+        BookCopy copy = copyRepository.lockBySchoolIdAndBookNumber(schoolId, bookNumber)
                 .orElseThrow(() -> new LibraryRuleException("BOOK_NUMBER_NOT_FOUND", HttpStatus.NOT_FOUND,
                         "Book copy not found"));
 
@@ -228,7 +231,8 @@ public class LibraryBorrowingService {
     public LibraryViews.LostResult markLost(Long schoolId, String bookNumber, UserPrincipal principal) {
         String normalized = bookNumber.trim().toUpperCase();
 
-        BookCopy copy = copyRepository.findBySchoolIdAndBookNumber(schoolId, normalized)
+        // PESSIMISTIC_WRITE lock on BookCopy first (lock order: copy → account)
+        BookCopy copy = copyRepository.lockBySchoolIdAndBookNumber(schoolId, normalized)
                 .orElseThrow(() -> new LibraryRuleException("BOOK_NUMBER_NOT_FOUND", HttpStatus.NOT_FOUND,
                         "Book copy not found"));
 

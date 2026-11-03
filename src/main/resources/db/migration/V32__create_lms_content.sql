@@ -11,7 +11,7 @@ CREATE TABLE lms_course (
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     CONSTRAINT uq_lms_course_school_stream_subject UNIQUE (school_id, stream_subject_id),
     CONSTRAINT fk_lms_course_school FOREIGN KEY (school_id) REFERENCES schools(id),
-    CONSTRAINT fk_lms_course_stream_subject FOREIGN KEY (stream_subject_id) REFERENCES stream_subject(id),
+    CONSTRAINT fk_lms_course_stream_subject FOREIGN KEY (stream_subject_id) REFERENCES stream_subjects(id),
     INDEX idx_lms_course_school (school_id)
 ) ENGINE=InnoDB;
 

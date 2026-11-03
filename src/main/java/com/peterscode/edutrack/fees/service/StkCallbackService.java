@@ -180,11 +180,23 @@ public class StkCallbackService {
     /**
      * Resolve a stale PENDING payment by querying the Mpesa status.
      * Used by the timeout job.
+     * <p>
+     * Idempotent: if the payment is already SUCCEEDED (e.g., a late callback arrived first),
+     * this method does nothing. The @Version field on FeePayment ensures that concurrent
+     * status updates (timeout job vs late callback) are serialized — one wins, the other
+     * gets an optimistic lock failure and should retry.
+     * </p>
      */
     @Transactional
     public void resolveStalePayment(Long schoolId, FeePayment payment, String resultDesc) {
         if (payment.getStatus() == FeePaymentStatus.SUCCEEDED) {
-            return; // Already resolved
+            return; // Already resolved by callback
+        }
+        if (payment.getStatus() == FeePaymentStatus.TIMED_OUT) {
+            return; // Already resolved by a previous timeout run
+        }
+        if (payment.getStatus() != FeePaymentStatus.PENDING) {
+            return; // In another terminal state — skip
         }
 
         payment.setStatus(FeePaymentStatus.TIMED_OUT);

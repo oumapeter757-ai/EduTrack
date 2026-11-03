@@ -46,4 +46,9 @@ public class PaymentAllocation extends BaseEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "invoice_id", nullable = false, insertable = false, updatable = false)
     private FeeInvoice invoice;
+
+    @Version
+    @Column(name = "version", nullable = false)
+    @Builder.Default
+    private Long version = 0L;
 }

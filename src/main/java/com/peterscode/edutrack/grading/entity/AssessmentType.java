@@ -36,4 +36,9 @@ public class AssessmentType extends BaseEntity {
     @OrderBy("sortOrder")
     @Builder.Default
     private List<AssessmentPaper> papers = new ArrayList<>();
+
+    @Version
+    @Column(name = "version", nullable = false)
+    @Builder.Default
+    private Long version = 0L;
 }

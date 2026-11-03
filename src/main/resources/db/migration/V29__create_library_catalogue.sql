@@ -46,7 +46,7 @@ CREATE TABLE book_copies (
     book_id BIGINT NOT NULL,
     book_number VARCHAR(50) NOT NULL,
     shelf_location VARCHAR(100),
-    condition VARCHAR(50),
+    `condition` VARCHAR(50),
     status VARCHAR(20) NOT NULL DEFAULT 'AVAILABLE',
     acquired_on DATE,
     lost_charge_hint DECIMAL(10,2),

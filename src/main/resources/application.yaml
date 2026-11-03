@@ -19,6 +19,10 @@ spring:
         jdbc:
           batch_size: 25
         order_updates: true
+        connection_provider_disables_autocommit: true
+  datasource:
+    hikari:
+      connection-init-sql: "SET SESSION TRANSACTION ISOLATION LEVEL READ COMMITTED"
 
   flyway:
     enabled: true
@@ -45,7 +49,7 @@ spring:
     host: ${SPRING_MAIL_HOST:localhost}
     port: ${SPRING_MAIL_PORT:587}
     username: ${SPRING_MAIL_USERNAME:}
-    password: ${SPRING_MAIL_PASSWORD:}
+    password: ${SPRING_MAIL_PASSWORD}
     properties:
       mail:
         smtp:

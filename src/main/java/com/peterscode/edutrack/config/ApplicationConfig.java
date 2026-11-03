@@ -22,6 +22,7 @@ import org.springframework.security.config.annotation.authentication.configurati
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import java.time.Clock;
+import org.springframework.web.client.RestTemplate;
 
 @Configuration
 @RequiredArgsConstructor
@@ -59,6 +60,11 @@ public class ApplicationConfig {
     }
 
     @Bean
+    public RestTemplate restTemplate() {
+        return new RestTemplate();
+    }
+
+    @Bean
     public ObjectMapper objectMapper() {
         return JsonMapper.builder()
                 .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, true)
@@ -72,7 +78,7 @@ public class ApplicationConfig {
             @Value("${edutrack.fees.encryption-key:}") String encryptionKey) {
         // Use a default key for development; production must set EDUTRACK_FEES_ENCRYPTION_KEY
         String key = encryptionKey.isBlank()
-                ? "YWRtaW4xMjM0NTY3ODkwYWRtaW4xMjM0NTY3ODkw" // dev-only 256-bit key
+                ? "ZWR1dHJhY2stZGV2LWtleS0zMmJ5dGVzLXh4eHh4eHg=" // dev-only 256-bit key (32 bytes)
                 : encryptionKey;
         return new CredentialEncryptionService(key);
     }

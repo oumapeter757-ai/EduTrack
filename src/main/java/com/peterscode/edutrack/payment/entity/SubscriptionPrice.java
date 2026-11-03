@@ -40,4 +40,9 @@ public class SubscriptionPrice extends BaseEntity {
 
     @Column(name = "effective_from")
     private LocalDate effectiveFrom;
+
+    @Version
+    @Column(name = "version", nullable = false)
+    @Builder.Default
+    private Long version = 0L;
 }

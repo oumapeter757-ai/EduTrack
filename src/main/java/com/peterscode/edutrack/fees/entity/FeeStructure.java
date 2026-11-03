@@ -52,4 +52,9 @@ public class FeeStructure extends BaseEntity {
     @OneToMany(mappedBy = "structure", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     private List<FeeItem> items = new ArrayList<>();
+
+    @Version
+    @Column(name = "version", nullable = false)
+    @Builder.Default
+    private Long version = 0L;
 }

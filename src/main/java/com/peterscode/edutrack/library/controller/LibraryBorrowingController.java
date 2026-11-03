@@ -7,6 +7,7 @@ import com.peterscode.edutrack.library.service.LibraryFineService;
 import com.peterscode.edutrack.school.enums.ServiceModule;
 import com.peterscode.edutrack.security.RequiresModule;
 import com.peterscode.edutrack.security.UserPrincipal;
+import com.peterscode.edutrack.shared.RetryHelper;
 import com.peterscode.edutrack.shared.response.ApiResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -24,13 +25,16 @@ public class LibraryBorrowingController {
 
     private final LibraryBorrowingService borrowingService;
     private final LibraryFineService fineService;
+    private final RetryHelper retryHelper = new RetryHelper();
 
     @PostMapping("/borrowing/issue")
     @PreAuthorize("hasAnyRole('SCHOOL_ADMIN', 'SUPER_ADMIN', 'LIBRARIAN')")
     public ResponseEntity<ApiResponse<LibraryViews.LoanView>> issueBook(
             @Valid @RequestBody LibraryRequests.IssueRequest request,
             @AuthenticationPrincipal UserPrincipal principal) {
-        LibraryViews.LoanView view = borrowingService.issueBook(principal.getSchoolId(), request, principal);
+        // Retry wrapper runs OUTSIDE the @Transactional boundary on the service
+        LibraryViews.LoanView view = retryHelper.execute(() ->
+                borrowingService.issueBook(principal.getSchoolId(), request, principal));
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success("Book issued", view));
     }
@@ -40,7 +44,8 @@ public class LibraryBorrowingController {
     public ResponseEntity<ApiResponse<LibraryViews.ReturnResult>> returnBook(
             @Valid @RequestBody LibraryRequests.ReturnRequest request,
             @AuthenticationPrincipal UserPrincipal principal) {
-        LibraryViews.ReturnResult result = borrowingService.returnBook(principal.getSchoolId(), request, principal);
+        LibraryViews.ReturnResult result = retryHelper.execute(() ->
+                borrowingService.returnBook(principal.getSchoolId(), request, principal));
         return ResponseEntity.ok(ApiResponse.success("Book returned", result));
     }
 
@@ -49,7 +54,8 @@ public class LibraryBorrowingController {
     public ResponseEntity<ApiResponse<LibraryViews.LoanView>> renewBook(
             @PathVariable Long loanId,
             @AuthenticationPrincipal UserPrincipal principal) {
-        LibraryViews.LoanView view = borrowingService.renewBook(principal.getSchoolId(), loanId, principal);
+        LibraryViews.LoanView view = retryHelper.execute(() ->
+                borrowingService.renewBook(principal.getSchoolId(), loanId, principal));
         return ResponseEntity.ok(ApiResponse.success("Loan renewed", view));
     }
 
@@ -58,7 +64,8 @@ public class LibraryBorrowingController {
     public ResponseEntity<ApiResponse<LibraryViews.LostResult>> markLost(
             @RequestParam String bookNumber,
             @AuthenticationPrincipal UserPrincipal principal) {
-        LibraryViews.LostResult result = borrowingService.markLost(principal.getSchoolId(), bookNumber, principal);
+        LibraryViews.LostResult result = retryHelper.execute(() ->
+                borrowingService.markLost(principal.getSchoolId(), bookNumber, principal));
         return ResponseEntity.ok(ApiResponse.success("Book marked as lost", result));
     }
 

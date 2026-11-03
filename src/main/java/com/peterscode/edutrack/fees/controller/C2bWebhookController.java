@@ -9,6 +9,7 @@ import com.peterscode.edutrack.fees.service.SchoolPaymentConfigService;
 import com.peterscode.edutrack.fees.service.StkCallbackService;
 import com.peterscode.edutrack.security.NoModuleRequired;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -45,6 +46,7 @@ public class C2bWebhookController {
      * Safaricom hits this endpoint when a payment is confirmed.
      */
     @PostMapping("/c2b/confirmation/{token}")
+    @PreAuthorize("permitAll()")
     public ResponseEntity<Map<String, Object>> handleConfirmation(
             @PathVariable String token,
             @RequestBody C2bCallbackRequest request) {
@@ -93,6 +95,7 @@ public class C2bWebhookController {
      * Safaricom hits this endpoint before confirming payment.
      */
     @PostMapping("/c2b/validation/{token}")
+    @PreAuthorize("permitAll()")
     public ResponseEntity<Map<String, Object>> handleValidation(
             @PathVariable String token,
             @RequestBody C2bCallbackRequest request) {
@@ -145,6 +148,7 @@ public class C2bWebhookController {
      * Safaricom hits this endpoint when an STK Push completes (success or failure).
      */
     @PostMapping("/stk/{token}")
+    @PreAuthorize("permitAll()")
     public ResponseEntity<Map<String, Object>> handleStkCallback(
             @PathVariable String token,
             @RequestBody C2bCallbackRequest request) {

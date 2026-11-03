@@ -6,9 +6,11 @@ import com.peterscode.edutrack.fees.enums.FeePaymentStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
-
+import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import jakarta.persistence.LockModeType;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -42,6 +44,33 @@ public interface FeePaymentRepository extends JpaRepository<FeePayment, Long> {
 
     List<FeePayment> findByStatusAndCreatedAtBefore(
             FeePaymentStatus status, LocalDateTime before);
+
+    // ==================== Job Claiming (SKIP LOCKED) ====================
+
+    /**
+     * Claim a bounded batch of stale PENDING payments for the timeout job.
+     * Uses PESSIMISTIC_WRITE with SKIP LOCKED so multiple instances claim disjoint rows.
+     * Only claims unclaimed rows (claimed_by IS NULL or lease expired).
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT p FROM FeePayment p WHERE p.status = :status " +
+            "AND p.createdAt < :before " +
+            "AND (p.claimedBy IS NULL OR p.claimedUntil < :now) " +
+            "ORDER BY p.createdAt ASC")
+    List<FeePayment> claimStalePayments(
+            @Param("status") FeePaymentStatus status,
+            @Param("before") LocalDateTime before,
+            @Param("now") LocalDateTime now);
+
+    /**
+     * Return expired claims back to the queue so another runner can pick them up.
+     */
+    @Modifying
+    @Query("UPDATE FeePayment p SET p.claimedBy = NULL, p.claimedUntil = NULL " +
+            "WHERE p.claimedUntil < :now AND p.status = :status")
+    int returnExpiredClaims(
+            @Param("now") LocalDateTime now,
+            @Param("status") FeePaymentStatus status);
 
     // ==================== Report Queries ====================
 

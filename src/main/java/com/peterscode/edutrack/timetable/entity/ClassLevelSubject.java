@@ -26,4 +26,9 @@ public class ClassLevelSubject extends BaseEntity {
     @Builder.Default
     @Column(nullable = false)
     private boolean compulsory = true;
+
+    @Version
+    @Column(name = "version", nullable = false)
+    @Builder.Default
+    private Long version = 0L;
 }

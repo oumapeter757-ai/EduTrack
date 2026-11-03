@@ -31,6 +31,8 @@ import com.peterscode.edutrack.timetable.exception.TimetableRuleException;
 import com.peterscode.edutrack.library.exception.LibraryRuleException;
 import com.peterscode.edutrack.lms.exception.LmsRuleException;
 import com.peterscode.edutrack.fees.exception.FeesRuleException;
+import com.peterscode.edutrack.shared.IdempotencyService;
+import com.peterscode.edutrack.shared.RetryHelper;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.authentication.LockedException;
@@ -44,7 +46,7 @@ import java.util.regex.Pattern;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
     private static final Pattern CONSTRAINT_PATTERN = Pattern.compile(
-            "(?:[\\w]+\\.)?((?:uk_student_school_email|uk_student_user_id|uk_student_school_admission|chk_school_max_students_positive|chk_school_max_teachers_positive|uk_lesson_stream_slot|uk_lesson_teacher_slot|uk_lesson_room_slot|uk_stream_subject_year|uk_class_level_subject|uk_timetable_school_term|uk_attendance_school_student_date_scope))",
+            "(?:[\\w]+\\.)?((?:uk_student_school_email|uk_student_user_id|uk_student_school_admission|chk_school_max_students_positive|chk_school_max_teachers_positive|uk_lesson_stream_slot|uk_lesson_teacher_slot|uk_lesson_room_slot|uk_stream_subject_year|uk_class_level_subject|uk_timetable_school_term|uk_attendance_school_student_date_scope|uk_fee_payment_pending_student|uk_idempotency_school_user_endpoint_key))",
             Pattern.CASE_INSENSITIVE);
 
     @ExceptionHandler(ResourceNotFoundException.class)
@@ -271,6 +273,14 @@ public class GlobalExceptionHandler {
             return ResponseEntity.status(HttpStatus.CONFLICT)
                     .body(ApiResponse.error("Attendance already exists for this student and session", "ATTENDANCE_DUPLICATE"));
         }
+        if ("uk_fee_payment_pending_student".equalsIgnoreCase(constraint)) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(ApiResponse.error("A pending payment already exists for this student", "PAYMENT_ALREADY_PENDING"));
+        }
+        if ("uk_idempotency_school_user_endpoint_key".equalsIgnoreCase(constraint)) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(ApiResponse.error("A request with this idempotency key is already being processed", "IDEMPOTENCY_CONFLICT"));
+        }
         log.warn("Data integrity conflict: {}", ex.getClass().getSimpleName());
         return ResponseEntity.status(HttpStatus.CONFLICT)
                 .body(ApiResponse.error("The request conflicts with an existing resource"));
@@ -305,6 +315,27 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(StudentRequestException.class)
     public ResponseEntity<ApiResponse<Void>> handleStudentRequest(StudentRequestException ex) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiResponse.error(ex.getMessage()));
+    }
+
+    @ExceptionHandler(IdempotencyService.IdempotencyConflictException.class)
+    public ResponseEntity<ApiResponse<Void>> handleIdempotencyConflict(IdempotencyService.IdempotencyConflictException ex) {
+        log.warn("Idempotency conflict: {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(ApiResponse.error(ex.getMessage(), "IDEMPOTENCY_CONFLICT"));
+    }
+
+    @ExceptionHandler(IdempotencyService.IdempotencyFingerprintMismatch.class)
+    public ResponseEntity<ApiResponse<Void>> handleIdempotencyFingerprintMismatch(IdempotencyService.IdempotencyFingerprintMismatch ex) {
+        log.warn("Idempotency fingerprint mismatch: {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
+                .body(ApiResponse.error(ex.getMessage(), "IDEMPOTENCY_FINGERPRINT_MISMATCH"));
+    }
+
+    @ExceptionHandler(RetryHelper.RetryExhaustedException.class)
+    public ResponseEntity<ApiResponse<Void>> handleRetryExhausted(RetryHelper.RetryExhaustedException ex) {
+        log.warn("Retry exhausted after {} attempts: {}", ex.getAttempts(), ex.getMessage());
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                .body(ApiResponse.error("The operation failed after multiple attempts. Please try again later.", "RETRY_EXHAUSTED"));
     }
 
     @ExceptionHandler(Exception.class)

@@ -36,4 +36,9 @@ public class BorrowingPolicy extends BaseEntity {
 
     @Column(name = "max_unpaid_fines", nullable = false, precision = 10, scale = 2)
     private BigDecimal maxUnpaidFines;
+
+    @Version
+    @Column(name = "version", nullable = false)
+    @Builder.Default
+    private Long version = 0L;
 }

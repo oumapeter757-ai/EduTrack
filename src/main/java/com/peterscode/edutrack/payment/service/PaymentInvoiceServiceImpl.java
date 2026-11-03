@@ -16,6 +16,7 @@ import com.peterscode.edutrack.school.repository.SchoolRepository;
 import com.peterscode.edutrack.shared.exception.ResourceNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,7 +24,15 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.UUID;
 
+/**
+ * Payment invoice service with multi-instance safe scheduled expiry.
+ * <p>
+ * The expireInvoicesScheduled method uses SKIP LOCKED so multiple instances
+ * process disjoint sets of expired invoices.
+ * </p>
+ */
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -34,6 +43,17 @@ public class PaymentInvoiceServiceImpl implements PaymentInvoiceService {
     private final SubscriptionPriceService subscriptionPriceService;
     private final SchoolRepository schoolRepository;
     private final MpesaConfig mpesaConfig;
+
+    @Value("${edutrack.payment-invoice.batch-size:100}")
+    private int batchSize;
+
+    @Value("${edutrack.payment-invoice.lease-minutes:10}")
+    private int leaseMinutes;
+
+    /**
+     * Unique identifier for this job instance (set at startup).
+     */
+    private static final String RUNNER_ID = "invoice-expire-" + UUID.randomUUID().toString().substring(0, 8);
 
     @Override
     @Transactional
@@ -91,6 +111,11 @@ public class PaymentInvoiceServiceImpl implements PaymentInvoiceService {
                 .toList();
     }
 
+    /**
+     * Expire all pending invoices that have passed their expiry date.
+     * Used by createInvoice and getInvoice as a one-time check.
+     * This method is NOT multi-instance safe — it processes all expired invoices.
+     */
     @Override
     @Transactional
     public void expireInvoices() {
@@ -113,10 +138,98 @@ public class PaymentInvoiceServiceImpl implements PaymentInvoiceService {
         }
     }
 
+    /**
+     * Scheduled job that expires pending invoices using SKIP LOCKED.
+     * Multiple instances process disjoint sets of expired invoices.
+     */
     @Scheduled(fixedRate = 3600000)
     @Override
     public void expireInvoicesScheduled() {
-        expireInvoices();
+        LocalDateTime now = LocalDateTime.now();
+
+        // Return expired claims back to the queue
+        int returned = returnExpiredClaims(now);
+        if (returned > 0) {
+            log.info("Invoice expiry: returned {} expired claims", returned);
+        }
+
+        // Claim a bounded batch of expired invoices with SKIP LOCKED
+        List<PaymentInvoice> claimed;
+        try {
+            claimed = claimExpiredInvoices(PaymentInvoiceStatus.PENDING, now);
+        } catch (Exception e) {
+            log.error("Invoice expiry: failed to claim invoices", e);
+            return;
+        }
+
+        if (claimed.isEmpty()) {
+            return;
+        }
+
+        // Limit to batch size
+        if (claimed.size() > batchSize) {
+            claimed = claimed.subList(0, batchSize);
+        }
+
+        // Mark claimed rows with this runner's lease
+        markClaimed(claimed, RUNNER_ID, now.plusMinutes(leaseMinutes));
+
+        log.info("Invoice expiry: claimed {} invoices (runner={})", claimed.size(), RUNNER_ID);
+
+        // Process each invoice in its own transaction
+        for (PaymentInvoice invoice : claimed) {
+            expireOneInvoice(invoice);
+        }
+    }
+
+    /**
+     * Expire a single invoice in its own transaction.
+     */
+    @Transactional
+    public void expireOneInvoice(PaymentInvoice invoice) {
+        // Reload to get latest version
+        PaymentInvoice fresh = paymentInvoiceRepository.findById(invoice.getId())
+                .orElse(null);
+        if (fresh == null || fresh.getStatus() != PaymentInvoiceStatus.PENDING) {
+            return;
+        }
+        fresh.setStatus(PaymentInvoiceStatus.EXPIRED);
+        paymentInvoiceRepository.save(fresh);
+        PaymentTransaction transaction = PaymentTransaction.builder()
+                .invoice(fresh)
+                .eventType(PaymentTransactionEventType.INVOICE_EXPIRED)
+                .amount(fresh.getAmount())
+                .details("Invoice " + fresh.getInvoiceNumber() + " expired after 24 hours")
+                .build();
+        paymentTransactionRepository.save(transaction);
+    }
+
+    /**
+     * Return expired claims back to the queue.
+     */
+    @Transactional
+    public int returnExpiredClaims(LocalDateTime now) {
+        return paymentInvoiceRepository.returnExpiredClaims(now, PaymentInvoiceStatus.PENDING);
+    }
+
+    /**
+     * Claim a bounded batch of expired invoices using SKIP LOCKED.
+     */
+    @Transactional
+    public List<PaymentInvoice> claimExpiredInvoices(PaymentInvoiceStatus status, LocalDateTime now) {
+        return paymentInvoiceRepository.claimExpiredInvoices(status, now);
+    }
+
+    /**
+     * Mark claimed rows with this runner's lease.
+     */
+    @Transactional
+    public void markClaimed(List<PaymentInvoice> invoices, String runnerId, LocalDateTime leaseUntil) {
+        for (PaymentInvoice i : invoices) {
+            i.setClaimedBy(runnerId);
+            i.setClaimedUntil(leaseUntil);
+            paymentInvoiceRepository.save(i);
+        }
     }
 
     @Override

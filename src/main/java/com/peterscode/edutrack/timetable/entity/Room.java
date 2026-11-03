@@ -27,5 +27,10 @@ public class Room extends BaseEntity {
     @Column(nullable = false)
     private boolean active = true;
 
+    @Version
+    @Column(name = "version", nullable = false)
+    @Builder.Default
+    private Long version = 0L;
+
     public enum RoomType { CLASSROOM, LAB, HALL, FIELD }
 }

@@ -28,4 +28,9 @@ public class StreamSubject extends BaseEntity {
     private Long teacherId;
     @Column(name = "lessons_per_week", nullable = false)
     private Integer lessonsPerWeek;
+
+    @Version
+    @Column(name = "version", nullable = false)
+    @Builder.Default
+    private Long version = 0L;
 }

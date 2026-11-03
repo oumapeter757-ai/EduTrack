@@ -55,4 +55,9 @@ public class TermGrade extends BaseEntity {
 
     @Column(name = "computed_by", nullable = false)
     private Long computedBy;
+
+    @Version
+    @Column(name = "version", nullable = false)
+    @Builder.Default
+    private Long version = 0L;
 }

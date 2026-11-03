@@ -33,4 +33,9 @@ public class PaymentTransaction extends BaseEntity {
 
     @Column(columnDefinition = "TEXT")
     private String details;
+
+    @Version
+    @Column(name = "version", nullable = false)
+    @Builder.Default
+    private Long version = 0L;
 }

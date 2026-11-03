@@ -97,6 +97,11 @@ public class Staff extends BaseEntity {
   @Builder.Default
   boolean active = true;
 
+  @Version
+  @Column(name = "version", nullable = false)
+  @Builder.Default
+  Long version = 0L;
+
   public String getFullName() {
     return (firstName + " " + (middleName == null ? "" : middleName + " ") + lastName).trim();
   }

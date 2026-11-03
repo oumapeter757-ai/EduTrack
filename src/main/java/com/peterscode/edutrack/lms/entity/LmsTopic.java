@@ -25,4 +25,9 @@ public class LmsTopic extends BaseEntity {
 
     @Column(nullable = false)
     private Integer position;
+
+    @Version
+    @Column(name = "version", nullable = false)
+    @Builder.Default
+    private Long version = 0L;
 }

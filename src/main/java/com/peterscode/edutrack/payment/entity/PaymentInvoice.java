@@ -59,4 +59,16 @@ public class PaymentInvoice extends BaseEntity {
 
     @Column(name = "expires_at", nullable = false)
     private LocalDateTime expiresAt;
+
+    // Job claim columns for SKIP LOCKED multi-instance safety
+    @Column(name = "claimed_by", length = 64)
+    private String claimedBy;
+
+    @Column(name = "claimed_until")
+    private LocalDateTime claimedUntil;
+
+    @Version
+    @Column(name = "version", nullable = false)
+    @Builder.Default
+    private Long version = 0L;
 }

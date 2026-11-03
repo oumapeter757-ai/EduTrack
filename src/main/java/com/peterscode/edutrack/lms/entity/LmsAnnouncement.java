@@ -28,4 +28,9 @@ public class LmsAnnouncement extends BaseEntity {
 
     @Column(name = "posted_by", nullable = false)
     private Long postedBy;
+
+    @Version
+    @Column(name = "version", nullable = false)
+    @Builder.Default
+    private Long version = 0L;
 }

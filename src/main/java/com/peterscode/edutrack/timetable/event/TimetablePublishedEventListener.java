@@ -3,6 +3,7 @@ package com.peterscode.edutrack.timetable.event;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 
 /**
@@ -14,7 +15,7 @@ public class TimetablePublishedEventListener {
 
     private static final Logger log = LoggerFactory.getLogger(TimetablePublishedEventListener.class);
 
-    @TransactionalEventListener
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onTimetablePublished(TimetablePublishedEvent event) {
         log.info("Timetable {} published for school {} term {}", event.timetableId(), event.schoolId(), event.termId());
     }

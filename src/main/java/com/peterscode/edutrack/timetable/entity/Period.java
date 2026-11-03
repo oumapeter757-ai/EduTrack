@@ -33,5 +33,10 @@ public class Period extends BaseEntity {
     @Column(nullable = false)
     private boolean active = true;
 
+    @Version
+    @Column(name = "version", nullable = false)
+    @Builder.Default
+    private Long version = 0L;
+
     public enum PeriodType { LESSON, BREAK }
 }

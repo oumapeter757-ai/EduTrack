@@ -26,4 +26,9 @@ public class LmsAttachment extends BaseEntity {
 
     @Column(name = "file_id", nullable = false)
     private Long fileId;
+
+    @Version
+    @Column(name = "version", nullable = false)
+    @Builder.Default
+    private Long version = 0L;
 }

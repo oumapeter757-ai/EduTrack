@@ -98,6 +98,11 @@ public class School extends BaseEntity {
     @Builder.Default
     private boolean active = true;
 
+    @Version
+    @Column(name = "version", nullable = false)
+    @Builder.Default
+    private Long version = 0L;
+
     /**
      * Checks if a particular service module is enabled for this school.
      */
