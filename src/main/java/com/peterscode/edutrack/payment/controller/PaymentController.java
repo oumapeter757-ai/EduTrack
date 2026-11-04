@@ -9,6 +9,7 @@ import com.peterscode.edutrack.payment.repository.PaymentTransactionRepository;
 import com.peterscode.edutrack.payment.service.PaymentInvoiceService;
 import com.peterscode.edutrack.security.NoModuleRequired;
 import com.peterscode.edutrack.security.UserPrincipal;
+import com.peterscode.edutrack.user.entity.Role;
 import com.peterscode.edutrack.shared.response.ApiResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -48,9 +49,13 @@ public class PaymentController {
     }
 
     @GetMapping("/invoice/{invoiceNumber}")
-    @PreAuthorize("permitAll()")
-    public ResponseEntity<ApiResponse<PaymentInvoiceDto>> getInvoice(@PathVariable String invoiceNumber) {
-        PaymentInvoiceDto invoice = paymentInvoiceService.getInvoice(invoiceNumber);
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'SCHOOL_ADMIN')")
+    public ResponseEntity<ApiResponse<PaymentInvoiceDto>> getInvoice(
+            @PathVariable String invoiceNumber,
+            @AuthenticationPrincipal UserPrincipal principal) {
+        PaymentInvoiceDto invoice = principal.getRole() == Role.SUPER_ADMIN
+                ? paymentInvoiceService.getInvoice(invoiceNumber)
+                : paymentInvoiceService.getInvoiceForSchool(invoiceNumber, principal.getSchoolId());
         return ResponseEntity.ok(ApiResponse.success("Invoice retrieved", invoice));
     }
 

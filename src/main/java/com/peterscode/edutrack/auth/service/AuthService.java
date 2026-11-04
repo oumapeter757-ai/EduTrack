@@ -2,9 +2,7 @@ package com.peterscode.edutrack.auth.service;
 
 import com.peterscode.edutrack.auth.dto.AuthResponseDto;
 import com.peterscode.edutrack.auth.dto.LoginRequestDto;
-import com.peterscode.edutrack.school.entity.School;
-import com.peterscode.edutrack.school.repository.SchoolRepository;
-import com.peterscode.edutrack.security.jwt.JwtService;
+import com.peterscode.edutrack.auth.service.RefreshTokenService.TokenPair;
 import com.peterscode.edutrack.security.UserPrincipal;
 import com.peterscode.edutrack.security.AuthRateLimiter;
 import com.peterscode.edutrack.security.ModuleAccessService;
@@ -15,7 +13,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.AuthenticationException;
 import org.springframework.stereotype.Service;
 
 /**
@@ -29,21 +26,15 @@ import org.springframework.stereotype.Service;
 public class AuthService {
 
     private final AuthenticationManager authenticationManager;
-    private final JwtService jwtService;
-    private final SchoolRepository schoolRepository;
+    private final RefreshTokenService refreshTokenService;
     private final ModuleAccessService moduleAccessService;
     private final AuthRateLimiter rateLimiter;
 
     public AuthResponseDto login(LoginRequestDto request) {
         String email = request.getEmail().trim().toLowerCase();
         rateLimiter.checkLogin(email);
-        Authentication authentication;
-        try {
-            authentication = authenticationManager.authenticate(
-                    new UsernamePasswordAuthenticationToken(email, request.getPassword()));
-        } catch (AuthenticationException ex) {
-            throw ex;
-        }
+        Authentication authentication = authenticationManager.authenticate(
+                new UsernamePasswordAuthenticationToken(email, request.getPassword()));
 
         UserPrincipal userPrincipal = (UserPrincipal) authentication.getPrincipal();
 
@@ -57,13 +48,27 @@ public class AuthService {
             }
         }
 
-        String jwtToken = jwtService.generateToken(userPrincipal);
+        return createResponse(userPrincipal, refreshTokenService.issue(userPrincipal));
+    }
 
+    public AuthResponseDto refresh(String presentedRefreshToken) {
+        TokenPair pair = refreshTokenService.rotate(presentedRefreshToken);
+        return createResponse(pair.principal(), pair);
+    }
+
+    public void logout(String presentedRefreshToken) {
+        refreshTokenService.revoke(presentedRefreshToken);
+    }
+
+    private AuthResponseDto createResponse(UserPrincipal principal, TokenPair pair) {
         return AuthResponseDto.builder()
-                .token(jwtToken)
-                .email(userPrincipal.getUsername())
-                .role(userPrincipal.getAuthorities().iterator().next().getAuthority())
-                .schoolId(userPrincipal.getSchoolId())
+                .token(pair.accessToken())
+                .refreshToken(pair.refreshToken())
+                .expiresIn(pair.accessTokenExpiresIn())
+                .refreshTokenExpiresIn(pair.refreshTokenExpiresIn())
+                .email(principal.getUsername())
+                .role(principal.getAuthorities().iterator().next().getAuthority())
+                .schoolId(principal.getSchoolId())
                 .build();
     }
 }

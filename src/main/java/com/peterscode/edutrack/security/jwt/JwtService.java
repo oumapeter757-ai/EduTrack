@@ -58,6 +58,10 @@ public class JwtService {
         return username.equals(userDetails.getUsername());
     }
 
+    public long getAccessTokenExpirationSeconds() {
+        return jwtExpiration / 1_000;
+    }
+
     private Claims extractAllClaims(String token) {
         return Jwts.parser()
                 .setSigningKey(getSignInKey())

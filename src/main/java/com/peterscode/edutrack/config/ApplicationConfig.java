@@ -76,10 +76,9 @@ public class ApplicationConfig {
     @Profile("!test")
     public CredentialEncryptionService credentialEncryptionService(
             @Value("${edutrack.fees.encryption-key:}") String encryptionKey) {
-        // Use a default key for development; production must set EDUTRACK_FEES_ENCRYPTION_KEY
-        String key = encryptionKey.isBlank()
-                ? "ZWR1dHJhY2stZGV2LWtleS0zMmJ5dGVzLXh4eHh4eHg=" // dev-only 256-bit key (32 bytes)
-                : encryptionKey;
-        return new CredentialEncryptionService(key);
+        if (encryptionKey.isBlank()) {
+            throw new IllegalStateException("EDUTRACK_FEES_ENCRYPTION_KEY must be configured");
+        }
+        return new CredentialEncryptionService(encryptionKey);
     }
 }

@@ -2,6 +2,8 @@ package com.peterscode.edutrack.auth.controller;
 
 import com.peterscode.edutrack.auth.dto.AuthResponseDto;
 import com.peterscode.edutrack.auth.dto.LoginRequestDto;
+import com.peterscode.edutrack.auth.dto.RefreshTokenRequest;
+import com.peterscode.edutrack.auth.dto.LogoutRequest;
 import com.peterscode.edutrack.auth.service.AuthService;
 import com.peterscode.edutrack.shared.response.ApiResponse;
 import com.peterscode.edutrack.user.dto.CreateSuperAdminRequestDto;
@@ -38,6 +40,20 @@ public class AuthController {
         return ResponseEntity.ok(ApiResponse.success("Authentication successful", response));
     }
 
+    @PostMapping("/refresh")
+    @PreAuthorize("permitAll()")
+    public ResponseEntity<ApiResponse<AuthResponseDto>> refresh(
+            @Valid @RequestBody RefreshTokenRequest request) {
+        AuthResponseDto response = authService.refresh(request.refreshToken());
+        return ResponseEntity.ok(ApiResponse.success("Token refreshed", response));
+    }
+
+    @PostMapping("/logout")
+    @PreAuthorize("permitAll()")
+    public ResponseEntity<Void> logout(@Valid @RequestBody LogoutRequest request) {
+        authService.logout(request.refreshToken());
+        return ResponseEntity.noContent().build();
+    }
 
     @PostMapping("/signup")
     @PreAuthorize("permitAll()")

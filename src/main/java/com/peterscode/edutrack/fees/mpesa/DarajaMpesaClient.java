@@ -35,10 +35,10 @@ public class DarajaMpesaClient implements MpesaClient {
     private final ObjectMapper objectMapper;
     private final Clock clock;
 
-    @Value("${mpesa.till-number:174379}")
+    @Value("${mpesa.till-number}")
     private String tillNumber;
 
-    @Value("${mpesa.passkey:bfb279f9aa9bdbcf158e97dd71a467cd2e0c893059b10a78361a486d637f172e}")
+    @Value("${mpesa.passkey}")
     private String passkey;
 
     @Value("${mpesa.environment:sandbox}")

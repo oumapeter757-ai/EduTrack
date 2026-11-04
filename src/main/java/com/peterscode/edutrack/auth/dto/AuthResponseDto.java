@@ -14,6 +14,9 @@ public class AuthResponseDto {
     private String token;
     @Builder.Default
     private String type = "Bearer";
+    private String refreshToken;
+    private Long expiresIn;
+    private Long refreshTokenExpiresIn;
     private String email;
     private String role;
     private Long schoolId;

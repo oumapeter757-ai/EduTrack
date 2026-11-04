@@ -11,12 +11,15 @@ import com.peterscode.edutrack.lms.exception.LmsRuleException;
 import com.peterscode.edutrack.lms.repository.LmsResourceRepository;
 import com.peterscode.edutrack.lms.repository.LmsTopicRepository;
 import com.peterscode.edutrack.security.UserPrincipal;
+import com.peterscode.edutrack.user.entity.Role;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
 
 @Service
 @RequiredArgsConstructor
@@ -117,7 +120,11 @@ public class LmsResourceService {
                 .orElseThrow(() -> new LmsRuleException("TOPIC_NOT_FOUND", HttpStatus.NOT_FOUND, "Topic not found"));
         accessGuard.assertStudentInCourse(schoolId, topic.getCourseId(), principal);
 
-        return resourceRepository.findByTopicId(topicId, pageable).map(this::toView);
+        Page<LmsResource> resources = principal.getRole() == Role.STUDENT
+                ? resourceRepository.findVisibleBySchoolIdAndTopicId(
+                        schoolId, topicId, LocalDateTime.now(), pageable)
+                : resourceRepository.findBySchoolIdAndTopicId(schoolId, topicId, pageable);
+        return resources.map(this::toView);
     }
 
     private LmsViews.ResourceView toView(LmsResource resource) {

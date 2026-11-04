@@ -42,6 +42,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest
 @Transactional
 @TestPropertySource(properties = {
+        "mpesa.webhook-token=test-callback-secret-12345678901",
         "spring.mail.host=localhost",
         "spring.mail.port=25",
         "spring.mail.username=test",
@@ -174,6 +175,7 @@ class MpesaWebhookIntegrationTest {
                 0, "Success");
 
         String response = mockMvc.perform(post("/api/v1/payments/callback/confirmation")
+                        .param("token", "test-callback-secret-12345678901")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(callback)))
                 .andExpect(status().isOk())
@@ -212,6 +214,7 @@ class MpesaWebhookIntegrationTest {
                 0, "Success");
 
         mockMvc.perform(post("/api/v1/payments/callback/confirmation")
+                        .param("token", "test-callback-secret-12345678901")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(callback)))
                 .andExpect(status().isOk())
@@ -229,6 +232,7 @@ class MpesaWebhookIntegrationTest {
                 1, "Payment declined by customer");
 
         mockMvc.perform(post("/api/v1/payments/callback/confirmation")
+                        .param("token", "test-callback-secret-12345678901")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(callback)))
                 .andExpect(status().isOk());
@@ -250,6 +254,7 @@ class MpesaWebhookIntegrationTest {
                 0, "Success");
 
         mockMvc.perform(post("/api/v1/payments/callback/confirmation")
+                        .param("token", "test-callback-secret-12345678901")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(callback)))
                 .andExpect(status().isOk());
@@ -257,5 +262,24 @@ class MpesaWebhookIntegrationTest {
         // Verify no invoice was created
         Optional<PaymentInvoice> found = paymentInvoiceRepository.findByInvoiceNumber("EDU-NONEXISTENT-000000");
         assertThat(found).isEmpty();
+    }
+
+    @Test
+    @DisplayName("POST /confirmation rejects callbacks without the shared secret")
+    void confirmation_missingCallbackSecret_isUnauthorized() throws Exception {
+        MpesaCallbackRequest callback = buildConfirmationCallback(
+                pendingInvoice.getInvoiceNumber(),
+                pendingInvoice.getAmount(),
+                "SLM3333333",
+                0, "Success");
+
+        mockMvc.perform(post("/api/v1/payments/callback/confirmation")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(callback)))
+                .andExpect(status().isUnauthorized());
+
+        PaymentInvoice unchanged = paymentInvoiceRepository
+                .findByInvoiceNumber(pendingInvoice.getInvoiceNumber()).orElseThrow();
+        assertThat(unchanged.getStatus()).isEqualTo(PaymentInvoiceStatus.PENDING);
     }
 }

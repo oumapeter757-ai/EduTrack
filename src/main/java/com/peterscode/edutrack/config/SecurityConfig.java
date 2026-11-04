@@ -41,7 +41,8 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         // Public authentication endpoints
                         .requestMatchers(org.springframework.http.HttpMethod.POST,
-                                "/api/v1/auth/login", "/api/v1/auth/signup").permitAll()
+                                "/api/v1/auth/login", "/api/v1/auth/signup",
+                                "/api/v1/auth/refresh", "/api/v1/auth/logout").permitAll()
                         // Public tenant lookup for login screens
                         .requestMatchers("/api/v1/schools/subdomain/**").permitAll()
                         .requestMatchers("/api/v1/schools/code/**").permitAll()

@@ -168,3 +168,41 @@ UNVERIFIED rather than presumed fixed or open.
 4. Filter student-visible LMS resources by publication and visibility.
 5. Complete route-by-route authorization/tenant-source and repository-scope
    verification, then resolve the UNVERIFIED Step 6 checks.
+
+## Remediation follow-up
+
+The four findings above were addressed after the static review:
+
+1. Payment callback handlers now require a configured shared callback token,
+   compare it in constant time, verify payment amount/receipt/state/expiry, and
+   lock invoices during callback transitions. Set
+   `MPESA_PAYMENT_WEBHOOK_TOKEN` and include it as the `token` query parameter
+   on the payment provider's validation and confirmation callback URLs; use a
+   random token with at least 32 characters and redact it from infrastructure
+   request logs. The secret itself is not recorded here.
+2. The source-known encryption-key fallback was removed. Configure
+   `EDUTRACK_FEES_ENCRYPTION_KEY` before starting any non-test profile. The
+   known hard-coded fallback passkey in the Daraja client was also removed.
+3. Invoice lookup now requires SUPER_ADMIN or SCHOOL_ADMIN; school admins are
+   restricted to invoices belonging to their own school.
+4. Student resource lists now contain only published resources whose
+   `visibleFrom` is null or has arrived; repository queries also include
+   `school_id`.
+
+Access/refresh token support was added: access JWTs default to 15 minutes,
+opaque refresh tokens expire after seven days by default, are stored only as
+SHA-256 hashes, rotate on refresh, and can be revoked at logout. Configure
+`JWT_ACCESS_EXPIRATION` and `JWT_REFRESH_EXPIRATION` in milliseconds to change
+these lifetimes. `POST /api/v1/auth/refresh` accepts `{"refreshToken":"..."}`;
+`POST /api/v1/auth/logout` revokes the submitted refresh token. The refreshed
+response retains the existing `token` access-token field and adds
+`refreshToken`, `expiresIn`, and `refreshTokenExpiresIn`.
+
+Production and test-source compilation succeeded, and the isolated refresh
+token unit test passed with `mvn -q -Dtest=RefreshTokenServiceTest test`.
+Database-backed integration tests and Flyway/database validation were not run
+because the available Spring integration-test configuration can
+connect to a local MySQL instance and was not proven isolated from shared data.
+The grouped inventory and incomplete route/repository/migration coverage above
+remain limitations of the review; remediation does not constitute a complete
+security audit.

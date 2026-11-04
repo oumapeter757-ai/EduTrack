@@ -102,7 +102,8 @@ application:
 
       secret-key: ${JWT_SECRET_KEY}
 
-      expiration: 86400000
+      expiration: ${JWT_ACCESS_EXPIRATION:900000}
+      refresh-expiration: ${JWT_REFRESH_EXPIRATION:604800000}
 
 mpesa:
   till-number: ${MPESA_TILL_NUMBER}
@@ -110,6 +111,8 @@ mpesa:
   passkey: ${MPESA_PASSKEY}
   environment: ${MPESA_ENVIRONMENT}
   callback-url: ${MPESA_CALLBACK_URL:https://halfhearted-shavonda-unedificial.ngrok-free.dev/api/v1/payments/callback}
+  # Use a random 32-byte token and include it as ?token=... on callback URLs.
+  webhook-token: ${MPESA_PAYMENT_WEBHOOK_TOKEN:}
 
 # Set edutrack.bootstrap.token from an environment variable for the first
 # administrator only, then remove the variable after signup succeeds.

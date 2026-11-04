@@ -12,6 +12,8 @@ public interface PaymentInvoiceService {
 
     PaymentInvoiceDto getInvoice(String invoiceNumber);
 
+    PaymentInvoiceDto getInvoiceForSchool(String invoiceNumber, Long schoolId);
+
     List<PaymentInvoiceDto> getSchoolInvoices(Long schoolId);
 
     void expireInvoices();

@@ -19,6 +19,12 @@ public interface PaymentInvoiceRepository extends JpaRepository<PaymentInvoice, 
 
     Optional<PaymentInvoice> findByInvoiceNumber(String invoiceNumber);
 
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT i FROM PaymentInvoice i WHERE i.invoiceNumber = :invoiceNumber")
+    Optional<PaymentInvoice> findByInvoiceNumberForUpdate(@Param("invoiceNumber") String invoiceNumber);
+
+    Optional<PaymentInvoice> findByInvoiceNumberAndSchoolId(String invoiceNumber, Long schoolId);
+
     List<PaymentInvoice> findBySchoolIdAndStatus(Long schoolId, PaymentInvoiceStatus status);
 
     List<PaymentInvoice> findBySchoolId(Long schoolId);

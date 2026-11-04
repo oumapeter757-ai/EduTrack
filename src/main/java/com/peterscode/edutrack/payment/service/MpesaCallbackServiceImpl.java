@@ -42,7 +42,7 @@ public class MpesaCallbackServiceImpl implements MpesaCallbackService {
         String invoiceNumber = extractInvoiceNumber(callback);
         BigDecimal transAmount = extractAmount(callback);
 
-        Optional<PaymentInvoice> invoiceOpt = paymentInvoiceRepository.findByInvoiceNumber(invoiceNumber);
+        Optional<PaymentInvoice> invoiceOpt = paymentInvoiceRepository.findByInvoiceNumberForUpdate(invoiceNumber);
         if (invoiceOpt.isEmpty()) {
             log.warn("Validation: invoice not found for number {}", invoiceNumber);
             return buildRejectResponse("Invoice not found: " + invoiceNumber);
@@ -54,7 +54,7 @@ public class MpesaCallbackServiceImpl implements MpesaCallbackService {
             return buildAcceptResponse();
         }
 
-        if (transAmount != null && invoice.getAmount().compareTo(transAmount) != 0) {
+        if (transAmount == null || invoice.getAmount().compareTo(transAmount) != 0) {
             log.warn("Validation: amount mismatch for invoice {}. Expected: {}, Received: {}",
                     invoiceNumber, invoice.getAmount(), transAmount);
             return buildRejectResponse("Amount mismatch. Expected: " + invoice.getAmount());
@@ -86,8 +86,9 @@ public class MpesaCallbackServiceImpl implements MpesaCallbackService {
 
         String invoiceNumber = extractInvoiceNumber(callback);
         String mpesaReceiptNumber = extractMpesaReceiptNumber(callback);
+        BigDecimal transAmount = extractAmount(callback);
 
-        Optional<PaymentInvoice> invoiceOpt = paymentInvoiceRepository.findByInvoiceNumber(invoiceNumber);
+        Optional<PaymentInvoice> invoiceOpt = paymentInvoiceRepository.findByInvoiceNumberForUpdate(invoiceNumber);
         if (invoiceOpt.isEmpty()) {
             log.error("Confirmation: invoice not found for number {}", invoiceNumber);
             return callback;
@@ -99,6 +100,17 @@ public class MpesaCallbackServiceImpl implements MpesaCallbackService {
         if (invoice.getStatus() == PaymentInvoiceStatus.CONFIRMED) {
             log.info("Confirmation: invoice {} already confirmed, skipping", invoiceNumber);
             return callback;
+        }
+
+        if ((invoice.getStatus() != PaymentInvoiceStatus.PENDING
+                && invoice.getStatus() != PaymentInvoiceStatus.VALIDATED)
+                || transAmount == null
+                || invoice.getAmount().compareTo(transAmount) != 0
+                || mpesaReceiptNumber == null
+                || mpesaReceiptNumber.isBlank()
+                || !invoice.getExpiresAt().isAfter(LocalDateTime.now())) {
+            log.warn("Confirmation rejected for invoice {} due to invalid state or payment details", invoiceNumber);
+            return buildRejectResponse("Payment confirmation could not be verified");
         }
 
         invoice.setStatus(PaymentInvoiceStatus.CONFIRMED);
@@ -130,9 +142,13 @@ public class MpesaCallbackServiceImpl implements MpesaCallbackService {
     private void handleFailedPayment(MpesaCallbackRequest callback) {
         MpesaCallbackRequest.StkCallback stk = callback.getBody().getStkCallback();
         String invoiceNumber = extractInvoiceNumber(callback);
-        Optional<PaymentInvoice> invoiceOpt = paymentInvoiceRepository.findByInvoiceNumber(invoiceNumber);
+        Optional<PaymentInvoice> invoiceOpt = paymentInvoiceRepository.findByInvoiceNumberForUpdate(invoiceNumber);
         if (invoiceOpt.isPresent()) {
             PaymentInvoice invoice = invoiceOpt.get();
+            if (invoice.getStatus() != PaymentInvoiceStatus.PENDING
+                    && invoice.getStatus() != PaymentInvoiceStatus.VALIDATED) {
+                return;
+            }
             invoice.setStatus(PaymentInvoiceStatus.FAILED);
             paymentInvoiceRepository.save(invoice);
             logTransaction(invoice, PaymentTransactionEventType.FAILED,

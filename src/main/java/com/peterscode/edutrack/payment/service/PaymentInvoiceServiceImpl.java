@@ -105,6 +105,14 @@ public class PaymentInvoiceServiceImpl implements PaymentInvoiceService {
 
     @Override
     @Transactional(readOnly = true)
+    public PaymentInvoiceDto getInvoiceForSchool(String invoiceNumber, Long schoolId) {
+        return paymentInvoiceRepository.findByInvoiceNumberAndSchoolId(invoiceNumber, schoolId)
+                .map(this::toDto)
+                .orElseThrow(() -> new ResourceNotFoundException("Invoice not found"));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<PaymentInvoiceDto> getSchoolInvoices(Long schoolId) {
         return paymentInvoiceRepository.findBySchoolId(schoolId).stream()
                 .map(this::toDto)
