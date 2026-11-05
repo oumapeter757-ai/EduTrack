@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -27,6 +28,7 @@ public interface StoredFileRepository extends JpaRepository<StoredFile, Long> {
      * Multiple instances calling this method will get disjoint sets of rows.
      */
     @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Transactional
     @Query("SELECT f FROM StoredFile f WHERE f.status = :status " +
             "AND f.createdAt < :before " +
             "AND (f.claimedBy IS NULL OR f.claimedUntil < :now) " +
@@ -40,6 +42,7 @@ public interface StoredFileRepository extends JpaRepository<StoredFile, Long> {
      * Return expired claims back to the queue.
      */
     @Modifying
+    @Transactional
     @Query("UPDATE StoredFile f SET f.claimedBy = NULL, f.claimedUntil = NULL " +
             "WHERE f.claimedUntil < :now AND f.status = :status")
     int returnExpiredClaims(

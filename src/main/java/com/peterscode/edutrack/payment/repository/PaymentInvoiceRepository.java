@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -36,6 +37,7 @@ public interface PaymentInvoiceRepository extends JpaRepository<PaymentInvoice, 
      * Multiple instances calling this method will get disjoint sets of rows.
      */
     @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Transactional
     @Query("SELECT i FROM PaymentInvoice i WHERE i.status = :status " +
             "AND i.expiresAt < :now " +
             "AND (i.claimedBy IS NULL OR i.claimedUntil < :now) " +
@@ -48,6 +50,7 @@ public interface PaymentInvoiceRepository extends JpaRepository<PaymentInvoice, 
      * Return expired claims back to the queue.
      */
     @Modifying
+    @Transactional
     @Query("UPDATE PaymentInvoice i SET i.claimedBy = NULL, i.claimedUntil = NULL " +
             "WHERE i.claimedUntil < :now AND i.status = :status")
     int returnExpiredClaims(

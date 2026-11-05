@@ -54,6 +54,7 @@ public interface FeePaymentRepository extends JpaRepository<FeePayment, Long> {
      * Only claims unclaimed rows (claimed_by IS NULL or lease expired).
      */
     @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Transactional
     @Query("SELECT p FROM FeePayment p WHERE p.status = :status " +
             "AND p.createdAt < :before " +
             "AND (p.claimedBy IS NULL OR p.claimedUntil < :now) " +
