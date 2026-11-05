@@ -116,6 +116,8 @@ edutrack:
   cache:
     enabled: ${EDUTRACK_CACHE_ENABLED:false}
     schemaVersion: 1
+  fees:
+    encryption-key: ${EDUTRACK_FEES_ENCRYPTION_KEY:}
   auth:
     rate-limit:
       login-email-max-failures: ${EDUTRACK_AUTH_RATE_LIMIT_LOGIN_EMAIL_MAX_FAILURES:5}
