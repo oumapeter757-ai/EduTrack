@@ -53,7 +53,7 @@ PREPARE v47_compat_stmt FROM @v47_compat_cleanup;
 EXECUTE v47_compat_stmt;
 DEALLOCATE PREPARE v47_compat_stmt;
 
--- Flyway applies this migration once, so no pre-existing helper procedure is expected.
+DROP PROCEDURE IF EXISTS ensure_version_column;
 DELIMITER //
 CREATE PROCEDURE ensure_version_column(IN table_name_arg VARCHAR(64))
 BEGIN
@@ -112,7 +112,7 @@ CALL ensure_version_column('class_level_subjects');
 CALL ensure_version_column('stream_subjects');
 CALL ensure_version_column('callback_inbox');
 CALL ensure_version_column('unallocated_payments');
-CALL ensure_version_column('fee_payment_allocations');
+CALL ensure_version_column('payment_allocations');
 CALL ensure_version_column('term_grades');
 CALL ensure_version_column('subject_assessments');
 CALL ensure_version_column('assessment_papers');
