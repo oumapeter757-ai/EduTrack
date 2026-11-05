@@ -8,6 +8,9 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 public interface StreamSubjectRepository extends JpaRepository<StreamSubject, Long> {
+    @Query("select distinct s.streamId from StreamSubject s where s.schoolId = :schoolId and s.teacherId = :teacherId and s.academicYearId = :academicYearId")
+    List<Long> findAssignedStreamIds(@Param("schoolId") Long schoolId, @Param("teacherId") Long teacherId,
+                                     @Param("academicYearId") Long academicYearId);
     List<StreamSubject> findBySchoolIdAndStreamIdAndAcademicYearId(Long schoolId, Long streamId, Long academicYearId);
     List<StreamSubject> findBySchoolIdAndAcademicYearId(Long schoolId, Long academicYearId);
     Optional<StreamSubject> findBySchoolIdAndId(Long schoolId, Long id);

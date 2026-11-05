@@ -17,6 +17,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import javax.sql.DataSource;
 import java.time.Duration;
 import java.util.List;
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -28,6 +29,8 @@ class NotificationOutboxMySqlTest {
             .withDatabaseName("notification_test")
             .withUsername("test")
             .withPassword("test")
+            .withTmpFs(Map.of("/var/lib/mysql", "rw"))
+            .withConfigurationOverride("mysql")
             .withStartupTimeout(Duration.ofMinutes(5))
             .withReuse(false);
 
@@ -51,6 +54,7 @@ class NotificationOutboxMySqlTest {
                 .locations("classpath:db/migration")
                 .baselineOnMigrate(true)
                 .baselineVersion("51")
+                .target("54")
                 .load()
                 .migrate();
         transactions = new TransactionTemplate(new DataSourceTransactionManager(dataSource));

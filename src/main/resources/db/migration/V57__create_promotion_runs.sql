@@ -1,0 +1,55 @@
+CREATE TABLE promotion_runs (
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    school_id BIGINT NOT NULL,
+    from_academic_year_id BIGINT NOT NULL,
+    to_academic_year_id BIGINT NOT NULL,
+    status VARCHAR(30) NOT NULL,
+    created_by BIGINT NOT NULL,
+    approved_by BIGINT NULL,
+    approved_at DATETIME(6) NULL,
+    started_at DATETIME(6) NULL,
+    completed_at DATETIME(6) NULL,
+    lease_until DATETIME(6) NULL,
+    counts_json JSON NULL,
+    open_marker TINYINT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    created_at DATETIME(6) NOT NULL,
+    updated_at DATETIME(6) NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT fk_promotion_run_school FOREIGN KEY (school_id) REFERENCES schools(id),
+    CONSTRAINT fk_promotion_run_from_year FOREIGN KEY (from_academic_year_id) REFERENCES academic_years(id),
+    CONSTRAINT fk_promotion_run_to_year FOREIGN KEY (to_academic_year_id) REFERENCES academic_years(id),
+    CONSTRAINT uk_promotion_run_open UNIQUE (school_id, open_marker)
+);
+
+CREATE TABLE promotion_decisions (
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    run_id BIGINT NOT NULL,
+    student_id BIGINT NOT NULL,
+    from_enrollment_id BIGINT NULL,
+    from_enrollment_version BIGINT NULL,
+    proposed_outcome VARCHAR(30) NOT NULL,
+    final_outcome VARCHAR(30) NULL,
+    target_class_level_id BIGINT NULL,
+    target_stream_id BIGINT NULL,
+    override_reason VARCHAR(500) NULL,
+    status VARCHAR(30) NOT NULL,
+    warnings_json JSON NULL,
+    to_enrollment_id BIGINT NULL,
+    applied_at DATETIME(6) NULL,
+    claimed_until DATETIME(6) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    created_at DATETIME(6) NOT NULL,
+    updated_at DATETIME(6) NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT fk_promotion_decision_run FOREIGN KEY (run_id) REFERENCES promotion_runs(id),
+    CONSTRAINT fk_promotion_decision_student FOREIGN KEY (student_id) REFERENCES students(id),
+    CONSTRAINT fk_promotion_decision_from_enrollment FOREIGN KEY (from_enrollment_id) REFERENCES student_enrollments(id),
+    CONSTRAINT fk_promotion_decision_target_class FOREIGN KEY (target_class_level_id) REFERENCES class_levels(id),
+    CONSTRAINT fk_promotion_decision_target_stream FOREIGN KEY (target_stream_id) REFERENCES streams(id),
+    CONSTRAINT fk_promotion_decision_to_enrollment FOREIGN KEY (to_enrollment_id) REFERENCES student_enrollments(id),
+    CONSTRAINT uk_promotion_decision_run_student UNIQUE (run_id, student_id)
+);
+
+CREATE INDEX idx_promotion_run_school_status ON promotion_runs(school_id, status);
+CREATE INDEX idx_promotion_decision_run_status ON promotion_decisions(run_id, status);

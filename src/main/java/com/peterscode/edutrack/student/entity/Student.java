@@ -99,6 +99,9 @@ public class Student extends BaseEntity {
     @Column(name = "admission_date")
     private LocalDate admissionDate;
 
+    @Column(name = "left_on")
+    private LocalDate leftOn;
+
     
     @Column(name = "grade_level", length = 50)
     private String gradeLevel;

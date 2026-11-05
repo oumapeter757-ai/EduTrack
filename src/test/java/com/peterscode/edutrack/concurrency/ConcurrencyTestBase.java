@@ -11,6 +11,7 @@ import com.peterscode.edutrack.user.repository.UserRepository;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
@@ -20,6 +21,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.util.List;
 import java.util.Set;
+import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.ExecutorService;
@@ -27,6 +29,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.time.LocalDate;
 
 /**
  * Base class for concurrency tests.
@@ -44,6 +47,8 @@ public abstract class ConcurrencyTestBase {
             .withDatabaseName("edutrack_test")
             .withUsername("test")
             .withPassword("test")
+            .withTmpFs(Map.of("/var/lib/mysql", "rw"))
+            .withConfigurationOverride("mysql")
             .withReuse(false);
 
     @DynamicPropertySource
@@ -52,7 +57,8 @@ public abstract class ConcurrencyTestBase {
         registry.add("spring.datasource.username", mysql::getUsername);
         registry.add("spring.datasource.password", mysql::getPassword);
         registry.add("spring.datasource.driver-class-name", () -> "com.mysql.cj.jdbc.Driver");
-        registry.add("spring.jpa.hibernate.ddl-auto", () -> "validate");
+        registry.add("spring.jpa.hibernate.ddl-auto", () -> "none");
+        registry.add("spring.jpa.database-platform", () -> "org.hibernate.dialect.MySQLDialect");
         registry.add("spring.flyway.enabled", () -> "true");
         registry.add("spring.flyway.baseline-on-migrate", () -> "true");
         // Disable Redis for concurrency tests
@@ -82,6 +88,9 @@ public abstract class ConcurrencyTestBase {
     @Autowired
     protected UserRepository userRepository;
 
+    @Autowired
+    protected JdbcTemplate jdbcTemplate;
+
     protected Long schoolId;
     protected Long adminUserId;
 
@@ -100,6 +109,8 @@ public abstract class ConcurrencyTestBase {
                 .currency("KES")
                 .subscriptionTier(SubscriptionTier.STANDARD)
                 .subscriptionStatus(SubscriptionStatus.ACTIVE)
+                .subscriptionStartDate(LocalDate.now().minusDays(1))
+                .subscriptionEndDate(LocalDate.now().plusDays(365))
                 .enabledModules(Set.of(
                         ServiceModule.STUDENT_MANAGEMENT,
                         ServiceModule.ATTENDANCE,
@@ -136,6 +147,12 @@ public abstract class ConcurrencyTestBase {
     void tearDown() {
         // Clean up test data
         if (schoolId != null) {
+            jdbcTemplate.update("DELETE FROM student_enrollments WHERE school_id = ?", schoolId);
+            jdbcTemplate.update("DELETE FROM enrollment_audit WHERE school_id = ?", schoolId);
+            jdbcTemplate.update("DELETE FROM enrollment_settings WHERE school_id = ?", schoolId);
+            jdbcTemplate.update("DELETE FROM promotion_decisions WHERE run_id IN " +
+                    "(SELECT id FROM promotion_runs WHERE school_id = ?)", schoolId);
+            jdbcTemplate.update("DELETE FROM promotion_runs WHERE school_id = ?", schoolId);
             List<User> users = userRepository.findAll().stream()
                     .filter(u -> schoolId.equals(u.getSchoolId()))
                     .toList();

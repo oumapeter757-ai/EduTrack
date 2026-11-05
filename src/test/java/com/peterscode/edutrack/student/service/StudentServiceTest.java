@@ -22,6 +22,7 @@ import com.peterscode.edutrack.student.repository.StudentRepository;
 import com.peterscode.edutrack.user.entity.Role;
 import com.peterscode.edutrack.user.entity.User;
 import com.peterscode.edutrack.user.repository.UserRepository;
+import com.peterscode.edutrack.enrollment.service.EnrollmentService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -73,6 +74,9 @@ class StudentServiceTest {
 
     @Mock
     private com.peterscode.edutrack.student.audit.StudentAuditService auditService;
+
+    @Mock
+    private EnrollmentService enrollmentService;
 
     @Spy
     private StudentMapper studentMapper = new StudentMapper();

@@ -20,6 +20,8 @@ public class ClassLevelResponseDto {
     private String description;
     private Integer sortOrder;
     private boolean active;
+    private boolean graduating;
+    private Long nextClassLevelId;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

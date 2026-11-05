@@ -30,6 +30,7 @@ import com.peterscode.edutrack.security.PlanLimitReachedException;
 import com.peterscode.edutrack.timetable.exception.TimetableRuleException;
 import com.peterscode.edutrack.library.exception.LibraryRuleException;
 import com.peterscode.edutrack.lms.exception.LmsRuleException;
+import com.peterscode.edutrack.enrollment.exception.EnrollmentRuleException;
 import com.peterscode.edutrack.fees.exception.FeesRuleException;
 import com.peterscode.edutrack.shared.IdempotencyService;
 import com.peterscode.edutrack.shared.RetryHelper;
@@ -129,6 +130,11 @@ public class GlobalExceptionHandler {
         String message = ex.getErrorCode() != null && ex.getErrorCode().startsWith("RESOURCE_NOT_FOUND")
                 ? "Resource not found" : ex.getMessage();
         return ResponseEntity.status(ex.getStatus()).body(ApiResponse.error(message, ex.getErrorCode()));
+    }
+
+    @ExceptionHandler(EnrollmentRuleException.class)
+    public ResponseEntity<ApiResponse<Void>> handleEnrollmentRule(EnrollmentRuleException ex) {
+        return ResponseEntity.status(ex.getStatus()).body(ApiResponse.error(ex.getMessage(), ex.getErrorCode()));
     }
 
     @ExceptionHandler(FeesRuleException.class)

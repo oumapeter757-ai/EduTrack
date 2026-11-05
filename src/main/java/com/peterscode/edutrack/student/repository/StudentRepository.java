@@ -8,6 +8,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.stereotype.Repository;
+import org.springframework.data.jpa.repository.Lock;
+import jakarta.persistence.LockModeType;
 
 import java.util.Collection;
 import java.util.List;
@@ -15,6 +17,11 @@ import java.util.Optional;
 
 @Repository
 public interface StudentRepository extends JpaRepository<Student, Long>, JpaSpecificationExecutor<Student> {
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @org.springframework.data.jpa.repository.Query("select s from Student s where s.schoolId = :schoolId and s.id = :studentId")
+    Optional<Student> findLockedBySchoolIdAndId(@org.springframework.data.repository.query.Param("schoolId") Long schoolId,
+                                                  @org.springframework.data.repository.query.Param("studentId") Long studentId);
 
     boolean existsBySchoolIdAndAdmissionNumber(Long schoolId, String admissionNumber);
 

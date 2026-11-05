@@ -46,6 +46,13 @@ public class ClassLevel extends BaseEntity {
     @Column(name = "sort_order")
     private Integer sortOrder;
 
+    @Column(name = "graduating", nullable = false)
+    @Builder.Default
+    private boolean graduating = false;
+
+    @Column(name = "next_class_level_id")
+    private Long nextClassLevelId;
+
     @Column(name = "active", nullable = false)
     @Builder.Default
     private boolean active = true;

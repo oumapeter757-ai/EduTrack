@@ -28,6 +28,7 @@ import com.peterscode.edutrack.academicyear.entity.AcademicYear;
 import com.peterscode.edutrack.user.entity.Role;
 import com.peterscode.edutrack.user.entity.User;
 import com.peterscode.edutrack.user.repository.UserRepository;
+import com.peterscode.edutrack.enrollment.service.EnrollmentService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -57,6 +58,7 @@ public class StudentServiceImpl implements StudentService {
     private final StreamRepository streamRepository;
     private final AcademicYearRepository academicYearRepository;
     private final StudentAuditService auditService;
+    private final EnrollmentService enrollmentService;
 
     @Transactional
     @Override
@@ -95,6 +97,7 @@ public class StudentServiceImpl implements StudentService {
 
         Student student = studentMapper.toEntity(requestDto, schoolId);
         Student savedStudent = studentRepository.saveAndFlush(student);
+        enrollmentService.recordAdmission(savedStudent);
         log.info("Created new student with ID: {} and admission number: {} for school ID: {}",
                 savedStudent.getId(), savedStudent.getAdmissionNumber(), schoolId);
 
@@ -169,6 +172,9 @@ public class StudentServiceImpl implements StudentService {
                 .orElseThrow(() -> new StudentNotFoundException(id));
 
         validateAdminAccess(student.getSchoolId(), principal);
+        Long oldYearId = student.getAcademicYearId();
+        Long oldClassId = student.getClassLevelId();
+        Long oldStreamId = student.getStreamId();
         validateReferences(student.getSchoolId(), requestDto.getClassLevelId(), requestDto.getStreamId(), requestDto.getAcademicYearId());
 
         if (requestDto.getEmail() != null && !requestDto.getEmail().isBlank()) {
@@ -180,6 +186,7 @@ public class StudentServiceImpl implements StudentService {
 
         studentMapper.updateEntityFromDto(requestDto, student);
         Student updatedStudent = studentRepository.saveAndFlush(student);
+        enrollmentService.synchronizePlacement(updatedStudent, oldYearId, oldClassId, oldStreamId);
         log.info("Updated student ID: {} for school ID: {}", id, student.getSchoolId());
 
         return studentMapper.toDto(updatedStudent, principal.getRole());
@@ -204,6 +211,7 @@ public class StudentServiceImpl implements StudentService {
         student.setStatus(requestDto.getStatus());
 
         Student savedStudent = studentRepository.saveAndFlush(student);
+        enrollmentService.synchronizeStatus(savedStudent, oldStatus, principal);
         auditService.record(id, student.getSchoolId(), "STATUS_CHANGE", principal,
                 oldStatus == null ? null : oldStatus.name(), savedStudent.getStatus().name());
         log.info("Updated status for student ID: {} from {} (active: {}) to {} (active: {})",
@@ -234,7 +242,9 @@ public class StudentServiceImpl implements StudentService {
         Map<Long, StudentStatus> oldStatuses = students.stream()
                 .collect(Collectors.toMap(Student::getId, Student::getStatus, (a, b) -> a));
         for (Student student : students) {
+            StudentStatus oldStatus = student.getStatus();
             student.setStatus(requestDto.getStatus());
+            enrollmentService.synchronizeStatus(student, oldStatus, principal);
         }
 
         studentRepository.saveAll(students);
@@ -255,10 +265,12 @@ public class StudentServiceImpl implements StudentService {
 
         validateAdminAccess(student.getSchoolId(), principal);
 
+        StudentStatus oldStatus = student.getStatus();
         student.setStatus(StudentStatus.WITHDRAWN);
         studentRepository.save(student);
+        enrollmentService.synchronizeStatus(student, oldStatus, principal);
         auditService.record(id, student.getSchoolId(), "SOFT_DELETE", principal,
-                student.getStatus() == null ? null : student.getStatus().name(), "WITHDRAWN");
+                oldStatus == null ? null : oldStatus.name(), "WITHDRAWN");
         log.info("Soft deleted student ID: {} in school ID: {}", id, student.getSchoolId());
     }
 

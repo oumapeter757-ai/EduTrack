@@ -16,6 +16,7 @@ public class ClassLevelMapper {
                 .description(dto.getDescription())
                 .sortOrder(dto.getSortOrder())
                 .active(true)
+                .graduating(false)
                 .build();
     }
 
@@ -28,6 +29,8 @@ public class ClassLevelMapper {
                 .description(entity.getDescription())
                 .sortOrder(entity.getSortOrder())
                 .active(entity.isActive())
+                .graduating(entity.isGraduating())
+                .nextClassLevelId(entity.getNextClassLevelId())
                 .createdAt(entity.getCreatedAt())
                 .updatedAt(entity.getUpdatedAt())
                 .build();
@@ -38,6 +41,8 @@ public class ClassLevelMapper {
         if (dto.getCode() != null && !dto.getCode().isBlank()) entity.setCode(dto.getCode().trim().toUpperCase());
         if (dto.getDescription() != null) entity.setDescription(dto.getDescription());
         if (dto.getSortOrder() != null) entity.setSortOrder(dto.getSortOrder());
+        if (dto.getGraduating() != null) entity.setGraduating(dto.getGraduating());
+        if (dto.getNextClassLevelId() != null) entity.setNextClassLevelId(dto.getNextClassLevelId());
     }
 
     public Stream toStreamEntity(CreateStreamRequestDto dto, Long schoolId) {

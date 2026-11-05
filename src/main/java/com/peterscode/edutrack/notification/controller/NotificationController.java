@@ -3,6 +3,7 @@ package com.peterscode.edutrack.notification.controller;
 import com.peterscode.edutrack.notification.service.NotificationPreferenceService;
 import com.peterscode.edutrack.notification.service.NotificationOutboxStore.NotificationChannel;
 import com.peterscode.edutrack.security.RequiresModule;
+import com.peterscode.edutrack.security.NoModuleRequired;
 import com.peterscode.edutrack.security.UserPrincipal;
 import com.peterscode.edutrack.school.enums.ServiceModule;
 import jakarta.validation.Valid;
@@ -50,12 +51,14 @@ public class NotificationController {
     }
 
     @PostMapping("/opt-out")
+    @NoModuleRequired
     @PreAuthorize("permitAll()")
     public void optOut(@Valid @RequestBody OptOutRequest request) {
         applyOptOut(request.token());
     }
 
     @GetMapping("/opt-out")
+    @NoModuleRequired
     @PreAuthorize("permitAll()")
     public String optOutFromLink(@RequestParam String token) {
         applyOptOut(token);

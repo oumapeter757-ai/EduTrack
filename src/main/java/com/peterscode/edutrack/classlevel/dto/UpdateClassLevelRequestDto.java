@@ -26,4 +26,8 @@ public class UpdateClassLevelRequestDto {
     private Integer sortOrder;
 
     private Boolean active;
+
+    private Boolean graduating;
+
+    private Long nextClassLevelId;
 }
