@@ -12,14 +12,11 @@ import org.springframework.stereotype.Repository;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
-import com.peterscode.edutrack.student.enums.Gender;
 
 @Repository
 public interface StudentRepository extends JpaRepository<Student, Long>, JpaSpecificationExecutor<Student> {
 
     boolean existsBySchoolIdAndAdmissionNumber(Long schoolId, String admissionNumber);
-
-    boolean existsBySchoolIdAndAdmissionNumberAndIdNot(Long schoolId, String admissionNumber, Long id);
 
     boolean existsBySchoolIdAndEmail(Long schoolId, String email);
 
@@ -35,10 +32,6 @@ public interface StudentRepository extends JpaRepository<Student, Long>, JpaSpec
 
     long countBySchoolId(Long schoolId);
 
-    long countBySchoolIdAndActiveTrue(Long schoolId);
-
-    long countBySchoolIdAndActiveFalse(Long schoolId);
-
     long countBySchoolIdAndStreamIdAndActiveTrue(Long schoolId, Long streamId);
 
     List<Student> findBySchoolIdAndStreamIdAndActiveTrueOrderByFirstNameAscLastNameAsc(Long schoolId, Long streamId);
@@ -47,13 +40,9 @@ public interface StudentRepository extends JpaRepository<Student, Long>, JpaSpec
 
     long countBySchoolIdAndGender(Long schoolId, Gender gender);
 
-    long countBySchoolIdAndGradeLevel(Long schoolId, String gradeLevel);
-
     Page<Student> findBySchoolId(Long schoolId, Pageable pageable);
 
     List<Student> findBySchoolIdAndGradeLevel(Long schoolId, String gradeLevel);
-
-    List<Student> findBySchoolIdAndGradeLevelAndSection(Long schoolId, String gradeLevel, String section);
 
     List<Student> findAllBySchoolIdAndIdIn(Long schoolId, Collection<Long> ids);
 

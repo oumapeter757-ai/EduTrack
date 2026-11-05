@@ -31,7 +31,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 /**
  * Base class for concurrency tests.
  * <p>
- * Uses Testcontainers MySQL 8 with real Flyway migrations.
+ * Uses Testcontainers MySQL 9.7 with real Flyway migrations.
  * No @Transactional on test methods — real commits are required to expose concurrency bugs.
  * </p>
  */
@@ -40,7 +40,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 public abstract class ConcurrencyTestBase {
 
     @Container
-    protected static final MySQLContainer<?> mysql = new MySQLContainer<>("mysql:8.0")
+    protected static final MySQLContainer<?> mysql = new MySQLContainer<>("mysql:9.7")
             .withDatabaseName("edutrack_test")
             .withUsername("test")
             .withPassword("test")

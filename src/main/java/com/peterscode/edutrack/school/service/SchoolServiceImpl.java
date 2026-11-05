@@ -15,6 +15,7 @@ import com.peterscode.edutrack.payment.repository.PaymentTransactionRepository;
 import com.peterscode.edutrack.school.repository.SchoolRepository;
 import com.peterscode.edutrack.security.UserPrincipal;
 import com.peterscode.edutrack.security.AuthRateLimiter;
+import com.peterscode.edutrack.security.ModuleAccessService;
 import com.peterscode.edutrack.user.entity.Role;
 import com.peterscode.edutrack.shared.exception.DuplicateResourceException;
 import com.peterscode.edutrack.shared.exception.SchoolNotFoundException;
@@ -69,6 +70,7 @@ public class SchoolServiceImpl implements SchoolService {
     private final AuthRateLimiter authRateLimiter;
     private final PaymentInvoiceRepository paymentInvoiceRepository;
     private final PaymentTransactionRepository paymentTransactionRepository;
+    private final ModuleAccessService moduleAccessService;
 
     /** Null-safe transition validator. Skips when either side is null or when the status is unchanged. */
     private void validateTransition(SubscriptionStatus current, SubscriptionStatus requested) {
@@ -144,15 +146,16 @@ public class SchoolServiceImpl implements SchoolService {
                                                  UserPrincipal principal) {
         School existing = schoolRepository.findById(id)
                 .orElseThrow(() -> new SchoolNotFoundException(id));
-        if (principal.getRole() != Role.SUPER_ADMIN
-                && !id.equals(principal.getSchoolId())) {
+        if (principal == null
+                || (principal.getRole() != Role.SUPER_ADMIN && principal.getRole() != Role.SCHOOL_ADMIN)
+                || (principal.getRole() == Role.SCHOOL_ADMIN && !id.equals(principal.getSchoolId()))) {
             throw new SchoolNotFoundException(id);
         }
-        schoolMapper.updateEntityFromProfileDto(requestDto, existing);
         if (principal.getRole() != Role.SUPER_ADMIN && requestDto.getCurrency() != null) {
             throw new com.peterscode.edutrack.shared.exception.UnauthorizedOperationException(
                     "Only SUPER_ADMIN may change currency");
         }
+        schoolMapper.updateEntityFromProfileDto(requestDto, existing);
         return schoolMapper.toDto(schoolRepository.save(existing));
     }
 
@@ -387,9 +390,12 @@ public class SchoolServiceImpl implements SchoolService {
         if (schoolId == null || module == null) {
             return false;
         }
-        return schoolRepository.findById(schoolId)
-                .map(school -> school.isModuleEnabled(module))
-                .orElse(false);
+        try {
+            return moduleAccessService.entitlements(schoolId).hasModule(module);
+        } catch (RuntimeException ex) {
+            log.debug("isModuleEnabled returned false for school {}: {}", schoolId, ex.getMessage());
+            return false;
+        }
     }
 
     /**

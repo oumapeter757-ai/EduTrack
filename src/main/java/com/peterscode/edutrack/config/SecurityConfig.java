@@ -43,6 +43,10 @@ public class SecurityConfig {
                         .requestMatchers(org.springframework.http.HttpMethod.POST,
                                 "/api/v1/auth/login", "/api/v1/auth/signup",
                                 "/api/v1/auth/refresh", "/api/v1/auth/logout").permitAll()
+                        .requestMatchers(org.springframework.http.HttpMethod.POST,
+                                "/api/v1/notifications/opt-out").permitAll()
+                        .requestMatchers(org.springframework.http.HttpMethod.GET,
+                                "/api/v1/notifications/opt-out").permitAll()
                         // Public tenant lookup for login screens
                         .requestMatchers("/api/v1/schools/subdomain/**").permitAll()
                         .requestMatchers("/api/v1/schools/code/**").permitAll()

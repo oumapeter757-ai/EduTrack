@@ -174,6 +174,12 @@ public class UserRegistrationService {
     }
 
     private UserResponseDto createUser(CreateUserRequestDto request, Long schoolId, Role role) {
+        if (role.requiresSameSchool() && schoolId == null) {
+            throw new UnauthorizedOperationException("School context is required for role: " + role);
+        }
+        if (role == Role.SUPER_ADMIN && schoolId != null) {
+            throw new UnauthorizedOperationException("Super Admin cannot be assigned to a school");
+        }
         String email = request.getEmail().trim().toLowerCase();
         String username = request.getUsername().trim();
         validateUniqueConstraints(email, username);

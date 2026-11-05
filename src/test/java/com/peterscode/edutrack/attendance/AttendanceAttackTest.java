@@ -43,6 +43,7 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneId;
 import org.junit.jupiter.api.BeforeEach;
+import org.springframework.context.ApplicationEventPublisher;
 
 @ExtendWith(MockitoExtension.class)
 class AttendanceAttackTest {
@@ -58,6 +59,7 @@ class AttendanceAttackTest {
     @Mock private StreamSubjectRepository streamSubjectRepository;
     @Mock private ModuleAccessService moduleAccessService;
     @Mock private Clock clock;
+    @Mock private ApplicationEventPublisher events;
 
     @InjectMocks private AttendanceService service;
 

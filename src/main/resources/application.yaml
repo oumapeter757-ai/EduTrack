@@ -74,6 +74,43 @@ management:
       show-details: when-authorized
 
 edutrack:
+  notifications:
+    email:
+      enabled: ${EDUTRACK_NOTIFICATION_EMAIL_ENABLED:false}
+      provider: ${EDUTRACK_NOTIFICATION_EMAIL_PROVIDER:fake}
+      from: ${EDUTRACK_NOTIFICATION_EMAIL_FROM:}
+    sms:
+      enabled: ${EDUTRACK_NOTIFICATION_SMS_ENABLED:false}
+      mode: ${EDUTRACK_NOTIFICATION_SMS_MODE:DISABLED}
+      username: ${EDUTRACK_NOTIFICATION_SMS_USERNAME:}
+      api-key: ${EDUTRACK_NOTIFICATION_SMS_API_KEY:}
+      sender-id: ${EDUTRACK_NOTIFICATION_SMS_SENDER_ID:}
+      base-url: ${EDUTRACK_NOTIFICATION_SMS_BASE_URL:}
+      connect-timeout-millis: ${EDUTRACK_NOTIFICATION_SMS_CONNECT_TIMEOUT_MS:3000}
+      request-timeout-millis: ${EDUTRACK_NOTIFICATION_SMS_REQUEST_TIMEOUT_MS:10000}
+      maximum-message-characters: ${EDUTRACK_NOTIFICATION_SMS_MAX_MESSAGE_CHARACTERS:1600}
+    sms-quota:
+      monthly-segments:
+        FREE: ${EDUTRACK_NOTIFICATION_SMS_QUOTA_FREE:0}
+        BASIC: ${EDUTRACK_NOTIFICATION_SMS_QUOTA_BASIC:0}
+        STANDARD: ${EDUTRACK_NOTIFICATION_SMS_QUOTA_STANDARD:0}
+        PREMIUM: ${EDUTRACK_NOTIFICATION_SMS_QUOTA_PREMIUM:0}
+        ENTERPRISE: ${EDUTRACK_NOTIFICATION_SMS_QUOTA_ENTERPRISE:0}
+    destination-encryption-key: ${EDUTRACK_NOTIFICATION_DESTINATION_ENCRYPTION_KEY:}
+    opt-out-signing-key: ${EDUTRACK_NOTIFICATION_OPT_OUT_SIGNING_KEY:}
+    public-base-url: ${EDUTRACK_NOTIFICATION_PUBLIC_BASE_URL:}
+    teacher-announcements-enabled: ${EDUTRACK_NOTIFICATION_TEACHER_ANNOUNCEMENTS_ENABLED:false}
+    worker:
+      batch-size: ${EDUTRACK_NOTIFICATION_WORKER_BATCH_SIZE:50}
+      lease-seconds: ${EDUTRACK_NOTIFICATION_WORKER_LEASE_SECONDS:120}
+      maximum-attempts: ${EDUTRACK_NOTIFICATION_WORKER_MAXIMUM_ATTEMPTS:5}
+      retry-base-seconds: ${EDUTRACK_NOTIFICATION_WORKER_RETRY_BASE_SECONDS:30}
+      retry-maximum-seconds: ${EDUTRACK_NOTIFICATION_WORKER_RETRY_MAXIMUM_SECONDS:3600}
+      poll-delay-ms: ${EDUTRACK_NOTIFICATION_WORKER_POLL_DELAY_MS:5000}
+    retention:
+      message-days: ${EDUTRACK_NOTIFICATION_RETENTION_MESSAGE_DAYS:365}
+      audit-days: ${EDUTRACK_NOTIFICATION_RETENTION_AUDIT_DAYS:730}
+      batch-size: ${EDUTRACK_NOTIFICATION_RETENTION_BATCH_SIZE:1000}
   cache:
     enabled: ${EDUTRACK_CACHE_ENABLED:false}
     schemaVersion: 1
@@ -106,11 +143,11 @@ application:
       refresh-expiration: ${JWT_REFRESH_EXPIRATION:604800000}
 
 mpesa:
-  till-number: ${MPESA_TILL_NUMBER}
-  short-code: ${MPESA_SHORT_CODE}
-  passkey: ${MPESA_PASSKEY}
-  environment: ${MPESA_ENVIRONMENT}
-  callback-url: ${MPESA_CALLBACK_URL:https://halfhearted-shavonda-unedificial.ngrok-free.dev/api/v1/payments/callback}
+  till-number: ${MPESA_TILL_NUMBER:}
+  short-code: ${MPESA_SHORT_CODE:}
+  passkey: ${MPESA_PASSKEY:}
+  environment: ${MPESA_ENVIRONMENT:sandbox}
+  callback-url: ${MPESA_CALLBACK_URL:http://localhost:8080/api/v1/payments/callback}
   # Use a random 32-byte token and include it as ?token=... on callback URLs.
   webhook-token: ${MPESA_PAYMENT_WEBHOOK_TOKEN:}
 

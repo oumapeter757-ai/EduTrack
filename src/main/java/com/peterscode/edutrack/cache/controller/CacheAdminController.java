@@ -2,6 +2,7 @@ package com.peterscode.edutrack.cache.controller;
 
 import com.peterscode.edutrack.cache.CacheEvictionService;
 import com.peterscode.edutrack.cache.dto.EvictCacheRequest;
+import com.peterscode.edutrack.security.ModuleAccessService;
 import com.peterscode.edutrack.security.NoModuleRequired;
 import com.peterscode.edutrack.security.RequiresActiveSchool;
 import com.peterscode.edutrack.shared.response.ApiResponse;
@@ -33,6 +34,7 @@ import java.util.Map;
 public class CacheAdminController {
 
     private final CacheEvictionService cacheEvictionService;
+    private final ModuleAccessService moduleAccessService;
 
     /**
      * Evict all caches for a specific school.
@@ -67,5 +69,45 @@ public class CacheAdminController {
         );
 
         return ResponseEntity.ok(ApiResponse.success("Cache evicted successfully", data));
+    }
+
+    /**
+     * Get Caffeine local cache statistics.
+     * <p>
+     * SUPER_ADMIN only. Returns the estimated number of cached entitlement snapshots.
+     */
+    @GetMapping("/stats")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> caffeineCacheStats(
+            @AuthenticationPrincipal UserPrincipal currentUser) {
+
+        long size = moduleAccessService.estimatedSize();
+        log.info("Caffeine cache stats requested by SUPER_ADMIN user={}", currentUser.getEmail());
+
+        Map<String, Object> data = Map.of(
+                "cacheType", "caffeine",
+                "estimatedSize", size
+        );
+
+        return ResponseEntity.ok(ApiResponse.success("Caffeine cache stats", data));
+    }
+
+    /**
+     * Clear the Caffeine local cache (all entries).
+     * <p>
+     * SUPER_ADMIN only. Audited via log.
+     */
+    @PostMapping("/clear")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    public ResponseEntity<ApiResponse<Void>> clearCaffeineCache(
+            @AuthenticationPrincipal UserPrincipal currentUser) {
+
+        long sizeBefore = moduleAccessService.estimatedSize();
+        moduleAccessService.clear();
+        log.info("Caffeine cache cleared by SUPER_ADMIN user={} entriesCleared={}",
+                currentUser.getEmail(), sizeBefore);
+
+        return ResponseEntity.status(HttpStatus.NO_CONTENT)
+                .body(ApiResponse.success("Caffeine cache cleared", null));
     }
 }

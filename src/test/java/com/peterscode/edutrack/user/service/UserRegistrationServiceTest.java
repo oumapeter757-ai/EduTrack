@@ -1,8 +1,11 @@
 package com.peterscode.edutrack.user.service;
 
 import com.peterscode.edutrack.security.UserPrincipal;
+import com.peterscode.edutrack.security.ModuleAccessService;
 import com.peterscode.edutrack.shared.exception.UnauthorizedOperationException;
+import com.peterscode.edutrack.school.entity.School;
 import com.peterscode.edutrack.user.dto.CreateSchoolAdminRequestDto;
+import com.peterscode.edutrack.user.dto.CreateSchoolUserRequestDto;
 import com.peterscode.edutrack.user.dto.CreateSuperAdminRequestDto;
 import com.peterscode.edutrack.user.dto.UserResponseDto;
 import com.peterscode.edutrack.user.entity.Role;
@@ -47,6 +50,9 @@ class UserRegistrationServiceTest {
     private PlanGuard planGuard;
 
     @Mock
+    private ModuleAccessService moduleAccessService;
+
+    @Mock
     private EntityManager entityManager;
 
     @Mock
@@ -85,6 +91,10 @@ class UserRegistrationServiceTest {
                 .active(true)
                 .build();
         schoolAdminPrincipal = UserPrincipal.create(schoolAdminUser);
+
+        School school = School.builder().name("Test School").code("TEST").subdomain("test").active(true).build();
+        school.setId(10L);
+        lenient().when(schoolRepository.findById(10L)).thenReturn(Optional.of(school));
 
         ReflectionTestUtils.setField(userRegistrationService, "bootstrapToken", "test-token");
     }
@@ -178,5 +188,195 @@ class UserRegistrationServiceTest {
                 .isInstanceOf(UnauthorizedOperationException.class);
 
         verify(userRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("createTeacher succeeds with school context")
+    void createTeacher_WithSchoolContext_ShouldSucceed() {
+        CreateSchoolUserRequestDto request = new CreateSchoolUserRequestDto();
+        request.setFirstName("John");
+        request.setLastName("Teacher");
+        request.setUsername("jteacher");
+        request.setEmail("jteacher@example.com");
+        request.setPassword("Secret123!");
+
+        doNothing().when(planGuard).assertTeacherCapacity(anyLong(), anyInt());
+        when(userRepository.existsByUsername("jteacher")).thenReturn(false);
+        when(userRepository.existsByEmail("jteacher@example.com")).thenReturn(false);
+        when(passwordEncoder.encode("Secret123!")).thenReturn("encodedPassword");
+        when(userRepository.saveAndFlush(any(User.class))).thenAnswer(invocation -> {
+            User user = invocation.getArgument(0);
+            return User.builder()
+                    .schoolId(user.getSchoolId())
+                    .firstName(user.getFirstName())
+                    .lastName(user.getLastName())
+                    .username(user.getUsername())
+                    .email(user.getEmail())
+                    .password(user.getPassword())
+                    .role(user.getRole())
+                    .active(true)
+                    .build();
+        });
+
+        UserResponseDto response = userRegistrationService.createTeacher(request, schoolAdminPrincipal);
+
+        assertThat(response).isNotNull();
+        assertThat(response.getRole()).isEqualTo(Role.TEACHER);
+        assertThat(response.getSchoolId()).isEqualTo(10L);
+    }
+
+    @Test
+    @DisplayName("createStudent succeeds with school context")
+    void createStudent_WithSchoolContext_ShouldSucceed() {
+        CreateSchoolUserRequestDto request = new CreateSchoolUserRequestDto();
+        request.setFirstName("Jane");
+        request.setLastName("Student");
+        request.setUsername("jstudent");
+        request.setEmail("jstudent@example.com");
+        request.setPassword("Secret123!");
+
+        when(userRepository.existsByUsername("jstudent")).thenReturn(false);
+        when(userRepository.existsByEmail("jstudent@example.com")).thenReturn(false);
+        when(passwordEncoder.encode("Secret123!")).thenReturn("encodedPassword");
+        when(userRepository.saveAndFlush(any(User.class))).thenAnswer(invocation -> {
+            User user = invocation.getArgument(0);
+            return User.builder()
+                    .schoolId(user.getSchoolId())
+                    .firstName(user.getFirstName())
+                    .lastName(user.getLastName())
+                    .username(user.getUsername())
+                    .email(user.getEmail())
+                    .password(user.getPassword())
+                    .role(user.getRole())
+                    .active(true)
+                    .build();
+        });
+
+        UserResponseDto response = userRegistrationService.createStudent(request, schoolAdminPrincipal);
+
+        assertThat(response).isNotNull();
+        assertThat(response.getRole()).isEqualTo(Role.STUDENT);
+        assertThat(response.getSchoolId()).isEqualTo(10L);
+    }
+
+    @Test
+    @DisplayName("createParent succeeds with school context")
+    void createParent_WithSchoolContext_ShouldSucceed() {
+        CreateSchoolUserRequestDto request = new CreateSchoolUserRequestDto();
+        request.setFirstName("Bob");
+        request.setLastName("Parent");
+        request.setUsername("bparent");
+        request.setEmail("bparent@example.com");
+        request.setPassword("Secret123!");
+
+        when(userRepository.existsByUsername("bparent")).thenReturn(false);
+        when(userRepository.existsByEmail("bparent@example.com")).thenReturn(false);
+        when(passwordEncoder.encode("Secret123!")).thenReturn("encodedPassword");
+        when(userRepository.saveAndFlush(any(User.class))).thenAnswer(invocation -> {
+            User user = invocation.getArgument(0);
+            return User.builder()
+                    .schoolId(user.getSchoolId())
+                    .firstName(user.getFirstName())
+                    .lastName(user.getLastName())
+                    .username(user.getUsername())
+                    .email(user.getEmail())
+                    .password(user.getPassword())
+                    .role(user.getRole())
+                    .active(true)
+                    .build();
+        });
+
+        UserResponseDto response = userRegistrationService.createParent(request, schoolAdminPrincipal);
+
+        assertThat(response).isNotNull();
+        assertThat(response.getRole()).isEqualTo(Role.PARENT);
+        assertThat(response.getSchoolId()).isEqualTo(10L);
+    }
+
+    @Test
+    @DisplayName("createLibrarian succeeds with school context and LIBRARY module")
+    void createLibrarian_WithSchoolContext_ShouldSucceed() {
+        CreateSchoolUserRequestDto request = new CreateSchoolUserRequestDto();
+        request.setFirstName("Lib");
+        request.setLastName("rarian");
+        request.setUsername("librarian");
+        request.setEmail("librarian@example.com");
+        request.setPassword("Secret123!");
+
+        doNothing().when(moduleAccessService).assertModuleEnabled(eq(10L), any());
+        when(userRepository.existsByUsername("librarian")).thenReturn(false);
+        when(userRepository.existsByEmail("librarian@example.com")).thenReturn(false);
+        when(passwordEncoder.encode("Secret123!")).thenReturn("encodedPassword");
+        when(userRepository.saveAndFlush(any(User.class))).thenAnswer(invocation -> {
+            User user = invocation.getArgument(0);
+            return User.builder()
+                    .schoolId(user.getSchoolId())
+                    .firstName(user.getFirstName())
+                    .lastName(user.getLastName())
+                    .username(user.getUsername())
+                    .email(user.getEmail())
+                    .password(user.getPassword())
+                    .role(user.getRole())
+                    .active(true)
+                    .build();
+        });
+
+        UserResponseDto response = userRegistrationService.createLibrarian(request, schoolAdminPrincipal);
+
+        assertThat(response).isNotNull();
+        assertThat(response.getRole()).isEqualTo(Role.LIBRARIAN);
+        assertThat(response.getSchoolId()).isEqualTo(10L);
+    }
+
+    @Test
+    @DisplayName("createAccountant succeeds with school context and BILLING module")
+    void createAccountant_WithSchoolContext_ShouldSucceed() {
+        CreateSchoolUserRequestDto request = new CreateSchoolUserRequestDto();
+        request.setFirstName("Acc");
+        request.setLastName("ountant");
+        request.setUsername("accountant");
+        request.setEmail("accountant@example.com");
+        request.setPassword("Secret123!");
+
+        doNothing().when(moduleAccessService).assertModuleEnabled(eq(10L), any());
+        when(userRepository.existsByUsername("accountant")).thenReturn(false);
+        when(userRepository.existsByEmail("accountant@example.com")).thenReturn(false);
+        when(passwordEncoder.encode("Secret123!")).thenReturn("encodedPassword");
+        when(userRepository.saveAndFlush(any(User.class))).thenAnswer(invocation -> {
+            User user = invocation.getArgument(0);
+            return User.builder()
+                    .schoolId(user.getSchoolId())
+                    .firstName(user.getFirstName())
+                    .lastName(user.getLastName())
+                    .username(user.getUsername())
+                    .email(user.getEmail())
+                    .password(user.getPassword())
+                    .role(user.getRole())
+                    .active(true)
+                    .build();
+        });
+
+        UserResponseDto response = userRegistrationService.createAccountant(request, schoolAdminPrincipal);
+
+        assertThat(response).isNotNull();
+        assertThat(response.getRole()).isEqualTo(Role.ACCOUNTANT);
+        assertThat(response.getSchoolId()).isEqualTo(10L);
+    }
+
+    @Test
+    @DisplayName("Role.requiresSameSchool returns true for school-scoped roles")
+    void requiresSameSchool_SchoolScopedRoles_ShouldReturnTrue() {
+        assertThat(Role.TEACHER.requiresSameSchool()).isTrue();
+        assertThat(Role.STUDENT.requiresSameSchool()).isTrue();
+        assertThat(Role.PARENT.requiresSameSchool()).isTrue();
+        assertThat(Role.LIBRARIAN.requiresSameSchool()).isTrue();
+        assertThat(Role.ACCOUNTANT.requiresSameSchool()).isTrue();
+    }
+
+    @Test
+    @DisplayName("Role.requiresSameSchool returns false for non-school-scoped roles")
+    void requiresSameSchool_NonSchoolScopedRoles_ShouldReturnFalse() {
+        assertThat(Role.SUPER_ADMIN.requiresSameSchool()).isFalse();
+        assertThat(Role.SCHOOL_ADMIN.requiresSameSchool()).isFalse();
     }
 }

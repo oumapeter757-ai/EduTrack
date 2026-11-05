@@ -43,6 +43,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 
 @ExtendWith(MockitoExtension.class)
 class AttendanceServiceTest {
@@ -57,6 +58,7 @@ class AttendanceServiceTest {
     @Mock private StreamSubjectRepository streamSubjectRepository;
     @Mock private ModuleAccessService moduleAccessService;
     @Mock private Clock clock;
+    @Mock private ApplicationEventPublisher events;
     @InjectMocks private AttendanceService service;
 
     private final Clock fixedClock = Clock.fixed(Instant.parse("2026-10-31T08:00:00Z"), ZoneId.of("UTC"));

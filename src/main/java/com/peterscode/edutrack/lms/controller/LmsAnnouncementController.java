@@ -3,9 +3,12 @@ package com.peterscode.edutrack.lms.controller;
 import com.peterscode.edutrack.lms.audit.LmsAuditService;
 import com.peterscode.edutrack.lms.dto.LmsViews;
 import com.peterscode.edutrack.lms.entity.LmsAnnouncement;
+import com.peterscode.edutrack.lms.entity.LmsCourse;
+import com.peterscode.edutrack.lms.event.LmsAnnouncementCreatedEvent;
 import com.peterscode.edutrack.lms.exception.LmsRuleException;
 import com.peterscode.edutrack.lms.repository.LmsAnnouncementRepository;
 import com.peterscode.edutrack.lms.service.LmsAccessGuard;
+import com.peterscode.edutrack.timetable.repository.StreamSubjectRepository;
 import com.peterscode.edutrack.school.enums.ServiceModule;
 import com.peterscode.edutrack.security.RequiresModule;
 import com.peterscode.edutrack.security.UserPrincipal;
@@ -13,6 +16,7 @@ import com.peterscode.edutrack.shared.response.ApiResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Service;
@@ -57,12 +61,18 @@ class LmsAnnouncementService {
     private final LmsAnnouncementRepository announcementRepository;
     private final LmsAuditService auditService;
     private final LmsAccessGuard accessGuard;
+    private final StreamSubjectRepository streamSubjectRepository;
+    private final ApplicationEventPublisher events;
 
     @Transactional
     public LmsViews.AnnouncementView createAnnouncement(Long schoolId, Long courseId,
                                                          LmsViews.CreateAnnouncementRequest request,
                                                          UserPrincipal principal) {
-        accessGuard.assertCourseTeacher(schoolId, courseId, principal);
+        LmsCourse course = accessGuard.assertCourseTeacher(schoolId, courseId, principal);
+        var streamSubject = streamSubjectRepository.findBySchoolIdAndId(
+                        schoolId, course.getStreamSubjectId())
+                .orElseThrow(() -> new LmsRuleException("COURSE_NOT_FOUND", HttpStatus.NOT_FOUND,
+                        "Course not found"));
 
         LmsAnnouncement announcement = LmsAnnouncement.builder()
                 .schoolId(schoolId)
@@ -76,6 +86,9 @@ class LmsAnnouncementService {
 
         auditService.append(schoolId, "ANNOUNCEMENT", announcement.getId(), "CREATE",
                 principal.getId(), null, "title:" + request.title(), null);
+        events.publishEvent(new LmsAnnouncementCreatedEvent(schoolId, announcement.getId(), courseId,
+                streamSubject.getStreamId(), principal.getId(), principal.getRole() == com.peterscode.edutrack.user.entity.Role.TEACHER,
+                request.title()));
 
         return toView(announcement);
     }

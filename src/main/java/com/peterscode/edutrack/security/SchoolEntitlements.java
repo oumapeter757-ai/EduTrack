@@ -7,7 +7,14 @@ import java.util.Set;
 
 public record SchoolEntitlements(Long schoolId, SubscriptionTier tier, SubscriptionStatus status,
                                  LocalDate endDate, ZoneId timezone, Set<ServiceModule> enabledModules,
-                                 Set<ServiceModule> tierModules, boolean active, long daysLeft) {
+                                 Set<ServiceModule> tierModules, boolean active, long daysLeft,
+                                 SubscriptionStatus storedStatus) {
+    public SchoolEntitlements(Long schoolId, SubscriptionTier tier, SubscriptionStatus status,
+                              LocalDate endDate, ZoneId timezone, Set<ServiceModule> enabledModules,
+                              Set<ServiceModule> tierModules, boolean active, long daysLeft) {
+        this(schoolId, tier, status, endDate, timezone, enabledModules, tierModules, active, daysLeft, status);
+    }
+
     public SchoolEntitlements {
         enabledModules = enabledModules == null ? Set.of() : Set.copyOf(enabledModules);
         tierModules = tierModules == null ? Set.of() : Set.copyOf(tierModules);

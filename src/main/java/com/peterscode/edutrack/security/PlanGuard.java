@@ -20,7 +20,6 @@ public class PlanGuard {
     private final SchoolRepository schoolRepository;
     private final StudentRepository studentRepository;
     private final UserRepository userRepository;
-    private final PlanCatalog planCatalog;
 
     @Transactional(propagation = MANDATORY)
     public void assertStudentCapacity(Long schoolId, int additionalActiveStudents) {
@@ -63,12 +62,12 @@ public class PlanGuard {
     private Integer effectiveLimit(School school, boolean teachers) {
         if (school == null) throw new ResourceNotFoundException("School not found");
         if (teachers) {
-            if (planCatalog.unlimitedTeachers(school.getSubscriptionTier())) return null;
+            if (PlanCatalog.unlimitedTeachers(school.getSubscriptionTier())) return null;
             return school.getMaxTeachers() != null
-                    ? school.getMaxTeachers() : planCatalog.maxTeachers(school.getSubscriptionTier());
+                    ? school.getMaxTeachers() : PlanCatalog.maxTeachers(school.getSubscriptionTier());
         }
-        if (planCatalog.unlimitedStudents(school.getSubscriptionTier())) return null;
+        if (PlanCatalog.unlimitedStudents(school.getSubscriptionTier())) return null;
         return school.getMaxStudents() != null
-                ? school.getMaxStudents() : planCatalog.maxStudents(school.getSubscriptionTier());
+                ? school.getMaxStudents() : PlanCatalog.maxStudents(school.getSubscriptionTier());
     }
 }

@@ -186,35 +186,6 @@ public class SchoolMapper {
         }
     }
 
-    public void updateEntityFromSubscriptionDto(UpdateSchoolSubscriptionRequestDto dto, School school) {
-        if (dto == null || school == null) {
-            return;
-        }
-
-        if (dto.getSubscriptionTier() != null) {
-            school.setSubscriptionTier(dto.getSubscriptionTier());
-        }
-        if (dto.getSubscriptionStatus() != null) {
-            school.setSubscriptionStatus(dto.getSubscriptionStatus());
-        }
-        if (dto.getSubscriptionStartDate() != null) {
-            school.setSubscriptionStartDate(dto.getSubscriptionStartDate());
-        }
-        if (dto.getSubscriptionEndDate() != null) {
-            school.setSubscriptionEndDate(dto.getSubscriptionEndDate());
-        }
-        if (dto.getEnabledModules() != null) {
-            school.setEnabledModules(enumSet(dto.getEnabledModules()));
-        }
-
-        if (dto.getMaxStudents() != null) {
-            school.setMaxStudents(dto.getMaxStudents());
-        }
-        if (dto.getMaxTeachers() != null) {
-            school.setMaxTeachers(dto.getMaxTeachers());
-        }
-    }
-
     public void updateEntityFromDto(UpdateSchoolRequestDto dto, School school) {
         if (dto == null || school == null) {
             return;

@@ -9,6 +9,7 @@ import com.peterscode.edutrack.attendance.dto.AttendanceViews.StudentAttendanceV
 import com.peterscode.edutrack.attendance.entity.AttendanceStatus;
 import com.peterscode.edutrack.attendance.entity.AttendanceType;
 import com.peterscode.edutrack.attendance.entity.StudentAttendance;
+import com.peterscode.edutrack.attendance.event.StudentAbsenceRecordedEvent;
 import com.peterscode.edutrack.attendance.exception.AttendanceRuleException;
 import com.peterscode.edutrack.attendance.repository.StudentAttendanceRepository;
 import com.peterscode.edutrack.classlevel.entity.Stream;
@@ -43,6 +44,7 @@ import com.peterscode.edutrack.security.ModuleAccessService;
 import com.peterscode.edutrack.timetable.repository.StreamSubjectRepository;
 import java.time.Clock;
 import org.springframework.http.HttpStatus;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -60,6 +62,7 @@ public class AttendanceService {
     private final StreamSubjectRepository streamSubjectRepository;
     private final ModuleAccessService moduleAccessService;
     private final Clock clock;
+    private final ApplicationEventPublisher events;
 
     @Transactional
     public BatchResponse recordBatch(BatchRequest request, UserPrincipal principal) {
@@ -127,6 +130,14 @@ public class AttendanceService {
         }
 
         List<StudentAttendance> saved = attendanceRepository.saveAllAndFlush(toSave);
+        List<Long> absentStudentIds = saved.stream()
+                .filter(row -> row.getStatus() == AttendanceStatus.ABSENT)
+                .map(StudentAttendance::getStudentId)
+                .distinct()
+                .toList();
+        if (!absentStudentIds.isEmpty()) {
+            events.publishEvent(new StudentAbsenceRecordedEvent(schoolId, request.attendanceDate(), absentStudentIds));
+        }
         return new BatchResponse(roster.size(), createdCount, updatedCount,
                 saved.stream().map(row -> view(row, rosterById.get(row.getStudentId()))).toList());
     }

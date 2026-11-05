@@ -7,8 +7,11 @@ import com.peterscode.edutrack.school.enums.SubscriptionStatus;
 import com.peterscode.edutrack.school.enums.SubscriptionTier;
 import com.peterscode.edutrack.school.mapper.SchoolMapper;
 import com.peterscode.edutrack.school.repository.SchoolRepository;
+import com.peterscode.edutrack.security.ModuleAccessService;
+import com.peterscode.edutrack.security.SchoolEntitlements;
 import com.peterscode.edutrack.shared.exception.DuplicateResourceException;
 import com.peterscode.edutrack.shared.exception.SchoolNotFoundException;
+import com.peterscode.edutrack.shared.exception.UnauthorizedOperationException;
 import com.peterscode.edutrack.shared.response.PageResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -46,6 +49,9 @@ class SchoolServiceTest {
 
     @Mock
     private com.peterscode.edutrack.security.AuthRateLimiter authRateLimiter;
+
+    @Mock
+    private ModuleAccessService moduleAccessService;
 
     @Spy
     private SchoolMapper schoolMapper = new SchoolMapper();
@@ -210,6 +216,41 @@ class SchoolServiceTest {
     }
 
     @Test
+    @DisplayName("updateSchoolProfile rejects currency changes by the school admin")
+    void updateSchoolProfile_SchoolAdminCannotChangeCurrency() {
+        when(schoolRepository.findById(10L)).thenReturn(Optional.of(sampleSchool));
+        UpdateSchoolProfileRequestDto profileDto = UpdateSchoolProfileRequestDto.builder()
+                .name("Changed Name")
+                .currency("EUR")
+                .build();
+
+        assertThatThrownBy(() -> schoolService.updateSchoolProfile(10L, profileDto, schoolAdminPrincipal))
+                .isInstanceOf(UnauthorizedOperationException.class);
+        assertThat(sampleSchool.getName()).isEqualTo("Greenwood High");
+        assertThat(sampleSchool.getCurrency()).isEqualTo("USD");
+        verify(schoolRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("updateSchoolProfile rejects non-admin roles even for the same school")
+    void updateSchoolProfile_TeacherCannotUpdateProfile() {
+        UserPrincipal teacher = UserPrincipal.builder()
+                .id(3L)
+                .email("teacher@greenwood.edu")
+                .schoolId(10L)
+                .role(Role.TEACHER)
+                .authorities(List.of(new SimpleGrantedAuthority("ROLE_TEACHER")))
+                .active(true)
+                .build();
+        when(schoolRepository.findById(10L)).thenReturn(Optional.of(sampleSchool));
+
+        assertThatThrownBy(() -> schoolService.updateSchoolProfile(
+                10L, UpdateSchoolProfileRequestDto.builder().name("Changed Name").build(), teacher))
+                .isInstanceOf(SchoolNotFoundException.class);
+        verify(schoolRepository, never()).save(any());
+    }
+
+    @Test
     @DisplayName("updateSchoolSubscription updates subscription tier and module entitlements")
     void updateSchoolSubscription_Success() {
         when(schoolRepository.findById(10L)).thenReturn(Optional.of(sampleSchool));
@@ -245,12 +286,38 @@ class SchoolServiceTest {
     }
 
     @Test
-    @DisplayName("isModuleEnabled checks module entitlement correctly")
+    @DisplayName("isModuleEnabled checks module entitlement correctly via ModuleAccessService")
     void isModuleEnabled_Success() {
-        when(schoolRepository.findById(10L)).thenReturn(Optional.of(sampleSchool));
+        SchoolEntitlements entitlements = new SchoolEntitlements(
+                10L, SubscriptionTier.PREMIUM, SubscriptionStatus.ACTIVE,
+                LocalDate.now().plusDays(30), java.time.ZoneId.of("America/New_York"),
+                Set.of(ServiceModule.ATTENDANCE, ServiceModule.GRADING, ServiceModule.BILLING),
+                ServiceModule.getDefaultModulesForTier(SubscriptionTier.PREMIUM),
+                true, 30L);
+        when(moduleAccessService.entitlements(10L)).thenReturn(entitlements);
 
         assertThat(schoolService.isModuleEnabled(10L, ServiceModule.ATTENDANCE)).isTrue();
         assertThat(schoolService.isModuleEnabled(10L, ServiceModule.LMS)).isFalse();
+    }
+
+    @Test
+    @DisplayName("isModuleEnabled returns false for null schoolId")
+    void isModuleEnabled_NullSchoolId() {
+        assertThat(schoolService.isModuleEnabled(null, ServiceModule.ATTENDANCE)).isFalse();
+    }
+
+    @Test
+    @DisplayName("isModuleEnabled returns false for null module")
+    void isModuleEnabled_NullModule() {
+        assertThat(schoolService.isModuleEnabled(10L, null)).isFalse();
+    }
+
+    @Test
+    @DisplayName("isModuleEnabled returns false when ModuleAccessService throws")
+    void isModuleEnabled_ExceptionReturnsFalse() {
+        when(moduleAccessService.entitlements(10L)).thenThrow(new RuntimeException("School not found"));
+
+        assertThat(schoolService.isModuleEnabled(10L, ServiceModule.ATTENDANCE)).isFalse();
     }
 
     @Test

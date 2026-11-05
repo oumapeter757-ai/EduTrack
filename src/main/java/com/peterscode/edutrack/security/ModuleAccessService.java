@@ -43,7 +43,8 @@ public class ModuleAccessService {
         long daysLeft = computeDaysLeft(snapshot, status, today);
         return new SchoolEntitlements(snapshot.schoolId(), snapshot.tier(), status, snapshot.endDate(),
                 snapshot.timezone(), snapshot.enabledModules(),
-                ServiceModule.getDefaultModulesForTier(snapshot.tier()), snapshot.active(), daysLeft);
+                ServiceModule.getDefaultModulesForTier(snapshot.tier()), snapshot.active(), daysLeft,
+                snapshot.storedStatus());
     }
 
     private EntitlementSnapshot load(Long id) {
@@ -133,6 +134,15 @@ public class ModuleAccessService {
         }
         if (!e.hasModule(module)) {
             throw denied(schoolId, module, "MODULE_NOT_IN_PLAN", "Module is not enabled");
+        }
+    }
+
+    public boolean isModuleEnabled(Long schoolId, ServiceModule module) {
+        try {
+            assertModuleEnabled(schoolId, module);
+            return true;
+        } catch (ModuleAccessDeniedException ex) {
+            return false;
         }
     }
 

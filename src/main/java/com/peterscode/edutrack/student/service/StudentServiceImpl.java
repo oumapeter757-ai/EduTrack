@@ -8,7 +8,6 @@ import com.peterscode.edutrack.security.PlanGuard;
 import com.peterscode.edutrack.shared.exception.DuplicateResourceException;
 import com.peterscode.edutrack.shared.exception.SchoolNotFoundException;
 import com.peterscode.edutrack.shared.exception.UnauthorizedOperationException;
-import com.peterscode.edutrack.shared.exception.UserNotFound;
 import com.peterscode.edutrack.shared.response.PageResponse;
 import com.peterscode.edutrack.student.dto.*;
 import com.peterscode.edutrack.student.entity.Student;
@@ -516,13 +515,6 @@ public class StudentServiceImpl implements StudentService {
             throw new UnauthorizedOperationException("School context is required");
         }
         return principal.getSchoolId();
-    }
-
-    private Long requireSchoolForAdmin(UserPrincipal principal) {
-        if (principal.getRole() == Role.SUPER_ADMIN) {
-            throw new StudentRequestException("School context is required");
-        }
-        return requireSchool(principal);
     }
 
 }

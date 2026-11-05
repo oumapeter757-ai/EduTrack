@@ -1,12 +1,10 @@
 package com.peterscode.edutrack.school.service;
 
 import com.peterscode.edutrack.school.enums.SubscriptionTier;
-import org.springframework.stereotype.Component;
 
 import com.peterscode.edutrack.shared.exception.InvalidSubscriptionException;
 
-@Component
-public class PlanCatalog {
+public final class PlanCatalog {
     public static int maxStudents(SubscriptionTier tier) {
         return switch (requireTier(tier)) {
             case FREE -> 100;

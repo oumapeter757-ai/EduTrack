@@ -29,7 +29,7 @@ public class  UserPrincipal implements UserDetails {
     private final Collection<? extends GrantedAuthority> authorities;
     private final boolean active;
 
-    public UserPrincipal(User user) {
+    private UserPrincipal(User user) {
         this.id = user.getId();
         this.schoolId = user.getSchoolId();
         this.role = user.getRole();

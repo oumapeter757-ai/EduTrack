@@ -65,6 +65,18 @@ class ModuleAccessServiceTest {
     }
 
     @Test
+    void entitlementsExposeStoredAndEffectiveStatusesSeparately() {
+        School school = school(SubscriptionTier.BASIC, SubscriptionStatus.ACTIVE,
+                LocalDate.of(2026, 1, 14), EnumSet.allOf(ServiceModule.class));
+        when(schools.findById(7L)).thenReturn(Optional.of(school));
+
+        SchoolEntitlements entitlements = service.entitlements(7L);
+
+        assertThat(entitlements.storedStatus()).isEqualTo(SubscriptionStatus.ACTIVE);
+        assertThat(entitlements.status()).isEqualTo(SubscriptionStatus.GRACE);
+    }
+
+    @Test
     void freeTierCannotGainTimetableThroughTamperedEnabledModules() {
         School school = school(SubscriptionTier.FREE, SubscriptionStatus.ACTIVE, null,
                 EnumSet.allOf(ServiceModule.class));
