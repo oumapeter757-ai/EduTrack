@@ -42,6 +42,8 @@ spring:
       port: 6379
       password: ${REDIS_PASSWORD}
       timeout: 2s
+      repositories:
+        enabled: false
 
 
 
