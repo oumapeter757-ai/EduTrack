@@ -64,6 +64,34 @@ public interface FeePaymentRepository extends JpaRepository<FeePayment, Long> {
             @Param("before") LocalDateTime before,
             @Param("now") LocalDateTime now);
 
+    @Modifying
+    @Transactional
+    @Query(value = """
+            UPDATE fee_payments
+            SET claimed_by = :runnerId, claimed_until = :leaseUntil
+            WHERE id IN (
+                SELECT id FROM (
+                    SELECT id FROM fee_payments
+                    WHERE status = :status
+                      AND created_at < :before
+                      AND (claimed_by IS NULL OR claimed_until < :now)
+                    ORDER BY created_at, id
+                    LIMIT :batchSize
+                ) candidates
+            )
+            """, nativeQuery = true)
+    int claimStalePaymentsAtomically(@Param("status") String status,
+                                     @Param("before") LocalDateTime before,
+                                     @Param("now") LocalDateTime now,
+                                     @Param("runnerId") String runnerId,
+                                     @Param("leaseUntil") LocalDateTime leaseUntil,
+                                     @Param("batchSize") int batchSize);
+
+    @Query("SELECT p FROM FeePayment p WHERE p.claimedBy = :runnerId " +
+            "AND p.claimedUntil = :leaseUntil ORDER BY p.createdAt ASC")
+    List<FeePayment> findClaimedByRunner(@Param("runnerId") String runnerId,
+                                         @Param("leaseUntil") LocalDateTime leaseUntil);
+
     /**
      * Return expired claims back to the queue so another runner can pick them up.
      */

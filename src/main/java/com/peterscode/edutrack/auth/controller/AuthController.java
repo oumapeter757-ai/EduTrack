@@ -13,6 +13,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import com.peterscode.edutrack.security.NoModuleRequired;
 
@@ -33,12 +34,14 @@ public class AuthController {
     private final UserRegistrationService registrationService;
 
     @PostMapping("/login")
+    @PreAuthorize("permitAll()")
     public ResponseEntity<ApiResponse<AuthResponseDto>> login(@Valid @RequestBody LoginRequestDto request) {
         AuthResponseDto response = authService.login(request);
         return ResponseEntity.ok(ApiResponse.success("Authentication successful", response));
     }
 
     @PostMapping("/refresh")
+    @PreAuthorize("permitAll()")
     public ResponseEntity<ApiResponse<AuthResponseDto>> refresh(
             @Valid @RequestBody RefreshTokenRequest request) {
         AuthResponseDto response = authService.refresh(request.refreshToken());
@@ -46,12 +49,14 @@ public class AuthController {
     }
 
     @PostMapping("/logout")
+    @PreAuthorize("permitAll()")
     public ResponseEntity<Void> logout(@Valid @RequestBody LogoutRequest request) {
         authService.logout(request.refreshToken());
         return ResponseEntity.noContent().build();
     }
 
     @PostMapping("/signup")
+    @PreAuthorize("permitAll()")
     public ResponseEntity<ApiResponse<UserResponseDto>> signup(
             @RequestHeader(value = "X-Bootstrap-Token", required = false) String bootstrapToken,
             @Valid @RequestBody CreateSuperAdminRequestDto request) {

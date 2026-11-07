@@ -2,6 +2,8 @@ package com.peterscode.edutrack.user.repository;
 
 import com.peterscode.edutrack.user.entity.Role;
 import com.peterscode.edutrack.user.entity.User;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
@@ -19,7 +21,16 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     boolean existsByRole(Role role);
 
+    /**
+     * Find users by role — use for small result sets (e.g., SUPER_ADMIN lookup).
+     * For large result sets, use {@link #findByRole(Role, Pageable)} instead.
+     */
     List<User> findByRole(Role role);
+
+    /**
+     * Paginated version of {@link #findByRole(Role)} for large result sets.
+     */
+    Page<User> findByRole(Role role, Pageable pageable);
 
     long countBySchoolIdAndRoleAndActiveTrue(Long schoolId, Role role);
 }

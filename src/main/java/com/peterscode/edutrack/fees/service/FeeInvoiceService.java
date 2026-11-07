@@ -13,6 +13,10 @@ import com.peterscode.edutrack.fees.repository.FeeStructureRepository;
 import com.peterscode.edutrack.fees.repository.StudentFeeAccountRepository;
 import com.peterscode.edutrack.fees.security.FeesAccessGuard;
 import com.peterscode.edutrack.security.UserPrincipal;
+import com.peterscode.edutrack.security.ParentAccessGuard;
+import com.peterscode.edutrack.guardian.repository.GuardianRepository;
+import com.peterscode.edutrack.guardian.repository.ParentStudentMappingRepository;
+import com.peterscode.edutrack.user.entity.Role;
 import com.peterscode.edutrack.student.entity.Student;
 import com.peterscode.edutrack.student.repository.StudentRepository;
 import com.peterscode.edutrack.timetable.entity.Term;
@@ -41,6 +45,8 @@ public class FeeInvoiceService {
     private final StudentRepository studentRepository;
     private final TermRepository termRepository;
     private final LedgerService ledgerService;
+    private final GuardianRepository guardianRepository;
+    private final ParentStudentMappingRepository parentStudentMappingRepository;
 
     /**
      * Generate invoices for all students in a class level for a given fee structure.
@@ -137,6 +143,9 @@ public class FeeInvoiceService {
                     .orElseThrow(() -> new FeesRuleException("RESOURCE_NOT_FOUND", NOT_FOUND,
                             "Student not found"));
             studentId = student.getId();
+        } else if (principal.getRole() == Role.PARENT) {
+            ParentAccessGuard.assertLinked(schoolId, principal, parentStudentMappingRepository,
+                    guardianRepository, studentId);
         }
 
         // For PARENT role, ParentAccessGuard is called by the controller before this method
@@ -160,6 +169,21 @@ public class FeeInvoiceService {
         FeeInvoice invoice = feeInvoiceRepository.findBySchoolIdAndId(schoolId, id)
                 .orElseThrow(() -> new FeesRuleException("RESOURCE_NOT_FOUND", NOT_FOUND,
                         "Invoice not found"));
+        if (principal.getRole() == Role.STUDENT) {
+            Long studentId = studentRepository.findBySchoolIdAndUserId(schoolId, principal.getId())
+                    .orElseThrow(() -> new FeesRuleException("RESOURCE_NOT_FOUND", NOT_FOUND,
+                            "Student not found")).getId();
+            if (!studentId.equals(invoice.getStudentId())) {
+                throw new FeesRuleException("RESOURCE_NOT_FOUND", NOT_FOUND, "Invoice not found");
+            }
+        } else if (principal.getRole() == Role.PARENT) {
+            ParentAccessGuard.assertLinked(schoolId, principal, parentStudentMappingRepository,
+                    guardianRepository, invoice.getStudentId());
+        } else if (principal.getRole() != Role.SCHOOL_ADMIN
+                && principal.getRole() != Role.ACCOUNTANT
+                && principal.getRole() != Role.SUPER_ADMIN) {
+            throw new FeesRuleException("INSUFFICIENT_PERMISSION", FORBIDDEN, "Access denied");
+        }
         return toView(invoice);
     }
 

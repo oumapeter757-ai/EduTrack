@@ -17,7 +17,47 @@ spring:
 application:
   security:
     jwt:
-      secret-key: 404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970
+      # Test RSA private key (PKCS8, 2048-bit) — RS256 signing
+      secret-key: |
+        -----BEGIN PRIVATE KEY-----
+        MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQCdO8UimX3EXXOK
+        SmGPKLoO0/UAMfk4QZx5an749ecGU8amKP9zm8CWMuWQ/jeZVN/EbosZGKRVNmAu
+        CN66zo3PWHeghsUfuLjj/T+KXe/ob1CFIi9pbF+E2GyBwc0TBCUnwHKNJdL/SlA5
+        2/MtVhrmU7wlu0Oa5BXRLSod2ki2+4k/MT/zqwYkyOkirApqMkFOjLcwldk8zWbP
+        hgg+/k6nKAFoYRj6/MkKFUCfTQyYc4F9EnMy58CQL3H7q135Gi/jjJC9+gsqf0Di
+        1MoSzFlcfLloyeo6Vn5NgzMqqABE0YBRPOv/Sz7hGje6Ma1SV+m27QVTjDr8ccEU
+        NtaYuGcBAgMBAAECggEAHoreO97aBdtrVrklI1Rzc+7rYBrVAP8JwLIVsRG/S0TZ
+        ySwclx3xtptzaYtgTHomr3cTsQ/O2DikTTzu2xXFiTnznuye/Q76Z1spzRx7Pkjl
+        OL9Pu2hQU7NgvIHjbqa2+vZQqidnSazrUZnurmdT+VrZqPCr7LoSnNvrmvnsdxKu
+        f1NrUUUmAcJQS2DIltjSkBxgRFZKlWUvPEiShL2N3c7CP5L62vg9I/SlR4KGXSd9
+        qppRqMveG4/FoOXM5N5nnp6Prj6Ph9do9uVf5p/nVNXqmrxfdXtcnSmBRw7HQPVk
+        WIEg6/wjhRE7S3w9zEYqW44WPqq3yMdfj1bfn+tXMwKBgQDKRhotMyWjAiEnQwL3
+        8I9eSEcE9pR9KrpUfyGyeAtQlnf+UJqIVw3fXx4iF/rpR2ptO+8oTHqZu+xFiJJQ
+        HeNyyO4KV934nEX9+P2rWMZRcpZpTMTzleDcVGfu1CUqykZlNtDfR8ZbF86s/PGN
+        x1jgf4xuJVPBkkE3Umz8KAkD4wKBgQDG/xWXo8kju6O5bxuVp6C074KHaOs7KH2o
+        W/+xTD3RCyKIY9WEgWdlDcvUWkzhxvBEmufTDp0xx6+/1iMVLsWDnxMm+YFRE7Wr
+        t2O80zlruxnA4PL4zAm5khrYipe9vr2iVu5eZeowkbApObcvG25jUjbRV11gKGEO
+        BVi9ZYkGywKBgB+wKcuo9p156O24rs9e7Wbs1ctuQcb2GajBHetSqRsf53587Cit
+        0quKwDLBJPrEyGSCfi4HBTHuYc5m3d0VQZuq5LfUGh8nhEOMbVkZmEAMPooSj8xF
+        T6vUwU+GBqiUdcDHfKNuICIHMcah/cmjUEYjVUGwMVXi7rqW/CHot7jXAoGBAIhl
+        5e33tPHKNtHux3CP4obCuKyKDNqSyXayAJQNVz3HLRdhnsPhUvagOztF3fbPvna3
+        2vj+xl6NqfiLFab6VSX/zkfjs3DYWqjl3fZarbwbFe7wAXrpmCzbaY1Nie7kI+V3
+        QpHvt1MtORs41UfzvHlVq/9Xq8gyRTwwDABd7Ut7AoGAcqxQ+66b3DfRT056IxZ/
+        I4tjBYgzoh5ZoRjhgcbO+rSTRPp2Hex0XlnPoR5VRI9KX/g3dK7FFzL3LCPd6imK
+        WugS5kGnW6GjZw320vzBvzVK5oBuIA2DnPIvJ2YeM2XjkW+XzC6uR1UW/Hi+7gmO
+        qgzwezhtorbH/gVzOciY5Ls=
+        -----END PRIVATE KEY-----
+      # Test RSA public key — RS256 verification
+      public-key: |
+        -----BEGIN PUBLIC KEY-----
+        MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAnTvFIpl9xF1zikphjyi6
+        DtP1ADH5OEGceWp++PXnBlPGpij/c5vAljLlkP43mVTfxG6LGRikVTZgLgjeus6N
+        z1h3oIbFH7i44/0/il3v6G9QhSIvaWxfhNhsgcHNEwQlJ8ByjSXS/0pQOdvzLVYa
+        5lO8JbtDmuQV0S0qHdpItvuJPzE/86sGJMjpIqwKajJBToy3MJXZPM1mz4YIPv5O
+        pygBaGEY+vzJChVAn00MmHOBfRJzMufAkC9x+6td+Rov44yQvfoLKn9A4tTKEsxZ
+        XHy5aMnqOlZ+TYMzKqgARNGAUTzr/0s+4Ro3ujGtUlfptu0FU4w6/HHBFDbWmLhn
+        AQIDAQAB
+        -----END PUBLIC KEY-----
       expiration: 86400000
 
 edutrack:

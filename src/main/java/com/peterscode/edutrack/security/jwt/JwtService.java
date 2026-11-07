@@ -9,7 +9,13 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 
-import javax.crypto.SecretKey;
+import java.security.KeyFactory;
+import java.security.PrivateKey;
+import java.security.PublicKey;
+import java.security.interfaces.RSAPrivateCrtKey;
+import java.security.interfaces.RSAPublicKey;
+import java.security.spec.PKCS8EncodedKeySpec;
+import java.security.spec.X509EncodedKeySpec;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
@@ -19,10 +25,15 @@ import java.util.function.Function;
 public class JwtService {
 
     @Value("${application.security.jwt.secret-key}")
-    private String secretKey;
+    private String privateKeyPem;
+
+    @Value("${application.security.jwt.public-key:}")
+    private String publicKeyPem;
 
     @Value("${application.security.jwt.expiration}")
     private long jwtExpiration;
+
+    private volatile PublicKey publicKey;
 
     public String extractUsername(String token) {
         return extractClaim(token, Claims::getSubject);
@@ -38,6 +49,7 @@ public class JwtService {
         extraClaims.put("userId", userPrincipal.getId());
         extraClaims.put("schoolId", userPrincipal.getSchoolId());
         extraClaims.put("role", userPrincipal.getAuthorities().iterator().next().getAuthority());
+        extraClaims.put("userVersion", userPrincipal.getUserVersion());
 
         return generateToken(extraClaims, userPrincipal);
     }
@@ -50,16 +62,20 @@ public class JwtService {
                 .subject(userDetails.getUsername())
                 .issuedAt(issuedAt)
                 .expiration(expiresAt)
-                .signWith(getSignInKey(), Jwts.SIG.HS256)
+                .signWith(getPrivateKey(), Jwts.SIG.RS256)
                 .compact();
     }
 
     public boolean isTokenValid(String token, UserDetails userDetails) {
         final String username = extractUsername(token);
         final Date expiration = extractExpiration(token);
+        final Number tokenVersion = extractClaim(token, claims -> claims.get("userVersion", Number.class));
         boolean isUsernameMatch = username.equals(userDetails.getUsername());
         boolean isNotExpired = expiration.after(new Date());
-        return isUsernameMatch && isNotExpired;
+        boolean isCurrentUserVersion = userDetails instanceof UserPrincipal principal
+                && tokenVersion != null
+                && tokenVersion.longValue() == principal.getUserVersion();
+        return isUsernameMatch && isNotExpired && isCurrentUserVersion;
     }
 
     public Date extractExpiration(String token) {
@@ -72,14 +88,75 @@ public class JwtService {
 
     private Claims extractAllClaims(String token) {
         return Jwts.parser()
-                .verifyWith(getSignInKey())
+                .verifyWith(getPublicKey())
                 .build()
                 .parseSignedClaims(token)
                 .getPayload();
     }
 
-    private SecretKey getSignInKey() {
-        byte[] keyBytes = Decoders.BASE64.decode(secretKey);
-        return Keys.hmacShaKeyFor(keyBytes);
+    private PrivateKey getPrivateKey() {
+        try {
+            String cleaned = privateKeyPem
+                    .replace("-----BEGIN PRIVATE KEY-----", "")
+                    .replace("-----END PRIVATE KEY-----", "")
+                    .replace("-----BEGIN RSA PRIVATE KEY-----", "")
+                    .replace("-----END RSA PRIVATE KEY-----", "")
+                    .replaceAll("\\s", "");
+            byte[] keyBytes = Decoders.BASE64.decode(cleaned);
+            KeyFactory keyFactory = KeyFactory.getInstance("RSA");
+            PKCS8EncodedKeySpec keySpec = new PKCS8EncodedKeySpec(keyBytes);
+            return keyFactory.generatePrivate(keySpec);
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Failed to load RSA private key for JWT signing", e);
+        }
+    }
+
+    private PublicKey getPublicKey() {
+        if (this.publicKey != null) {
+            return this.publicKey;
+        }
+        synchronized (this) {
+            if (this.publicKey != null) {
+                return this.publicKey;
+            }
+            PublicKey pub;
+            if (publicKeyPem != null && !publicKeyPem.isBlank()) {
+                // Public key provided via config — use it for verification
+                try {
+                    String cleaned = publicKeyPem
+                            .replace("-----BEGIN PUBLIC KEY-----", "")
+                            .replace("-----END PUBLIC KEY-----", "")
+                            .replaceAll("\\s", "");
+                    byte[] keyBytes = Decoders.BASE64.decode(cleaned);
+                    KeyFactory keyFactory = KeyFactory.getInstance("RSA");
+                    X509EncodedKeySpec keySpec = new X509EncodedKeySpec(keyBytes);
+                    pub = keyFactory.generatePublic(keySpec);
+                } catch (Exception e) {
+                    throw new IllegalArgumentException("Failed to load RSA public key for JWT verification", e);
+                }
+            } else {
+                // Derive public key from the private key (single-instance fallback)
+                try {
+                    String cleaned = privateKeyPem
+                            .replace("-----BEGIN PRIVATE KEY-----", "")
+                            .replace("-----END PRIVATE KEY-----", "")
+                            .replace("-----BEGIN RSA PRIVATE KEY-----", "")
+                            .replace("-----END RSA PRIVATE KEY-----", "")
+                            .replaceAll("\\s", "");
+                    byte[] keyBytes = Decoders.BASE64.decode(cleaned);
+                    KeyFactory keyFactory = KeyFactory.getInstance("RSA");
+                    PKCS8EncodedKeySpec keySpec = new PKCS8EncodedKeySpec(keyBytes);
+                    RSAPrivateCrtKey priv = (RSAPrivateCrtKey) keyFactory.generatePrivate(keySpec);
+                    // Reconstruct the public key from the private key's modulus and exponent
+                    java.security.spec.RSAPublicKeySpec pubSpec = new java.security.spec.RSAPublicKeySpec(
+                            priv.getModulus(), priv.getPublicExponent());
+                    pub = keyFactory.generatePublic(pubSpec);
+                } catch (Exception e) {
+                    throw new IllegalArgumentException("Failed to derive RSA public key from private key", e);
+                }
+            }
+            this.publicKey = pub;
+            return pub;
+        }
     }
 }

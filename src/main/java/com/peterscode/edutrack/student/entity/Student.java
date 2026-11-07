@@ -1,5 +1,8 @@
 package com.peterscode.edutrack.student.entity;
 
+import com.peterscode.edutrack.academicyear.entity.AcademicYear;
+import com.peterscode.edutrack.classlevel.entity.ClassLevel;
+import com.peterscode.edutrack.classlevel.entity.Stream;
 import com.peterscode.edutrack.shared.AddressFormatter;
 import com.peterscode.edutrack.shared.BaseEntity;
 import com.peterscode.edutrack.student.enums.BloodGroup;
@@ -38,11 +41,23 @@ public class Student extends BaseEntity {
     @Column(name = "class_level_id")
     private Long classLevelId;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "class_level_id", insertable = false, updatable = false)
+    private ClassLevel classLevel;
+
     @Column(name = "stream_id")
     private Long streamId;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "stream_id", insertable = false, updatable = false)
+    private Stream stream;
+
     @Column(name = "academic_year_id")
     private Long academicYearId;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "academic_year_id", insertable = false, updatable = false)
+    private AcademicYear academicYearEntity;
 
     @Column(name = "user_id")
     private Long userId;

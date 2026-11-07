@@ -23,6 +23,9 @@ public interface LmsSubmissionRepository extends JpaRepository<LmsSubmission, Lo
             @Param("assignmentId") Long assignmentId,
             @Param("studentId") Long studentId);
 
-    @Query("SELECT s FROM LmsSubmission s WHERE s.studentId = :studentId ORDER BY s.submittedAt DESC")
-    Page<LmsSubmission> findByStudentId(@Param("studentId") Long studentId, Pageable pageable);
+    @Query("SELECT s FROM LmsSubmission s WHERE s.schoolId = :schoolId " +
+            "AND s.studentId = :studentId AND s.released = true ORDER BY s.submittedAt DESC")
+    Page<LmsSubmission> findBySchoolIdAndStudentId(@Param("schoolId") Long schoolId,
+                                                    @Param("studentId") Long studentId,
+                                                    Pageable pageable);
 }

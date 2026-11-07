@@ -174,14 +174,6 @@ public class PaymentInvoiceServiceImpl implements PaymentInvoiceService {
             return;
         }
 
-        // Limit to batch size
-        if (claimed.size() > batchSize) {
-            claimed = claimed.subList(0, batchSize);
-        }
-
-        // Mark claimed rows with this runner's lease
-        markClaimed(claimed, RUNNER_ID, now.plusMinutes(leaseMinutes));
-
         log.info("Invoice expiry: claimed {} invoices (runner={})", claimed.size(), RUNNER_ID);
 
         // Process each invoice in its own transaction
@@ -225,20 +217,12 @@ public class PaymentInvoiceServiceImpl implements PaymentInvoiceService {
      */
     @Transactional
     public List<PaymentInvoice> claimExpiredInvoices(PaymentInvoiceStatus status, LocalDateTime now) {
-        return paymentInvoiceRepository.claimExpiredInvoices(status, now);
+        LocalDateTime leaseUntil = now.plusMinutes(leaseMinutes);
+        paymentInvoiceRepository.claimExpiredInvoicesAtomically(status.name(), now,
+                RUNNER_ID, leaseUntil, batchSize);
+        return paymentInvoiceRepository.findClaimedByRunner(RUNNER_ID, leaseUntil);
     }
 
-    /**
-     * Mark claimed rows with this runner's lease.
-     */
-    @Transactional
-    public void markClaimed(List<PaymentInvoice> invoices, String runnerId, LocalDateTime leaseUntil) {
-        for (PaymentInvoice i : invoices) {
-            i.setClaimedBy(runnerId);
-            i.setClaimedUntil(leaseUntil);
-            paymentInvoiceRepository.save(i);
-        }
-    }
 
     @Override
     @Transactional(readOnly = true)

@@ -22,6 +22,7 @@ public class  UserPrincipal implements UserDetails {
     private final String email;
     private final Long schoolId;
     private final Role role;
+    private final Long userVersion;
 
     @JsonIgnore
     private String password;
@@ -33,6 +34,7 @@ public class  UserPrincipal implements UserDetails {
         this.id = user.getId();
         this.schoolId = user.getSchoolId();
         this.role = user.getRole();
+        this.userVersion = user.getVersion();
         this.password = user.getPassword();
         this.email = user.getEmail();
         this.active = user.isActive();
@@ -58,10 +60,15 @@ public class  UserPrincipal implements UserDetails {
                 .email(user.getEmail())
                 .schoolId(user.getSchoolId())
                 .role(user.getRole())
+                .userVersion(user.getVersion())
                 .password(user.getPassword())
                 .authorities(authorities)
                 .active(user.isActive())
                 .build();
+    }
+
+    public void clearPassword() {
+        this.password = null;
     }
 
     @Override

@@ -8,6 +8,7 @@ import com.peterscode.edutrack.lms.exception.LmsRuleException;
 import com.peterscode.edutrack.lms.repository.LmsAssignmentRepository;
 import com.peterscode.edutrack.lms.repository.LmsSubmissionRepository;
 import com.peterscode.edutrack.security.UserPrincipal;
+import com.peterscode.edutrack.student.repository.StudentRepository;
 import com.peterscode.edutrack.user.entity.Role;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -29,6 +30,7 @@ public class LmsSubmissionService {
     private final LmsAuditService auditService;
     private final LmsAccessGuard accessGuard;
     private final Clock clock;
+    private final StudentRepository studentRepository;
 
     @Transactional
     public LmsViews.SubmissionView submit(Long schoolId, Long assignmentId,
@@ -156,7 +158,10 @@ public class LmsSubmissionService {
         if (principal.getRole() != Role.STUDENT) {
             throw new LmsRuleException("ACCESS_DENIED", HttpStatus.FORBIDDEN, "Only students can view their submissions");
         }
-        return submissionRepository.findByStudentId(principal.getId(), pageable).map(this::toView);
+        Long studentId = studentRepository.findBySchoolIdAndUserId(schoolId, principal.getId())
+                .orElseThrow(() -> new LmsRuleException("STUDENT_NOT_FOUND", HttpStatus.NOT_FOUND,
+                        "Student not found")).getId();
+        return submissionRepository.findBySchoolIdAndStudentId(schoolId, studentId, pageable).map(this::toView);
     }
 
     @Transactional(readOnly = true)

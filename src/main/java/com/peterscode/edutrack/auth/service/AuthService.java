@@ -37,6 +37,7 @@ public class AuthService {
                 new UsernamePasswordAuthenticationToken(email, request.getPassword()));
 
         UserPrincipal userPrincipal = (UserPrincipal) authentication.getPrincipal();
+        userPrincipal.clearPassword();
 
         // Block login for users whose school has been deactivated (SUPER_ADMIN has no school)
         if (userPrincipal.getRole() != Role.SUPER_ADMIN) {

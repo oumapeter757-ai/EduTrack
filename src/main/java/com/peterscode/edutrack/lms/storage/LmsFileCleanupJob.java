@@ -83,14 +83,6 @@ public class LmsFileCleanupJob {
             return;
         }
 
-        // Limit to batch size
-        if (claimed.size() > cleanupBatchSize) {
-            claimed = claimed.subList(0, cleanupBatchSize);
-        }
-
-        // Mark claimed rows with this runner's lease
-        markClaimed(claimed, RUNNER_ID, now.plusMinutes(leaseMinutes));
-
         log.info("LMS cleanup: claimed {} files for deletion", claimed.size());
 
         // Delete files from disk OUTSIDE any DB transaction
@@ -129,7 +121,10 @@ public class LmsFileCleanupJob {
      */
     @Transactional
     public List<StoredFile> claimDeletedFiles(FileStatus status, LocalDateTime before, LocalDateTime now) {
-        return storedFileRepository.claimDeletedFiles(status, before, now);
+        LocalDateTime leaseUntil = now.plusMinutes(leaseMinutes);
+        storedFileRepository.claimDeletedFilesAtomically(status.name(), before, now,
+                RUNNER_ID, leaseUntil, cleanupBatchSize);
+        return storedFileRepository.findClaimedByRunner(RUNNER_ID, leaseUntil);
     }
 
     /**

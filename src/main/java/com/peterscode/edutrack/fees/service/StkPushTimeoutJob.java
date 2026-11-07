@@ -90,9 +90,6 @@ public class StkPushTimeoutJob {
 
         log.info("STK timeout job: claimed {} stale payments (runner={})", claimed.size(), RUNNER_ID);
 
-        // Mark claimed rows with this runner's lease
-        markClaimed(claimed, RUNNER_ID, now.plusMinutes(leaseMinutes));
-
         // Process each payment independently — no single transaction for all payments.
         // External Mpesa calls are made OUTSIDE any DB transaction.
         for (FeePayment payment : claimed) {
@@ -114,13 +111,10 @@ public class StkPushTimeoutJob {
      */
     @Transactional
     public List<FeePayment> claimStalePayments(FeePaymentStatus status, LocalDateTime before, LocalDateTime now) {
-        // The native query uses SKIP LOCKED to skip rows locked by other instances
-        List<FeePayment> payments = feePaymentRepository.claimStalePayments(status, before, now);
-        // Limit to batch size
-        if (payments.size() > batchSize) {
-            payments = payments.subList(0, batchSize);
-        }
-        return payments;
+        LocalDateTime leaseUntil = now.plusMinutes(leaseMinutes);
+        feePaymentRepository.claimStalePaymentsAtomically(status.name(), before, now,
+                RUNNER_ID, leaseUntil, batchSize);
+        return feePaymentRepository.findClaimedByRunner(RUNNER_ID, leaseUntil);
     }
 
     /**

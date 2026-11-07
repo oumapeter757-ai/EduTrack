@@ -38,6 +38,34 @@ public interface StoredFileRepository extends JpaRepository<StoredFile, Long> {
             @Param("before") LocalDateTime before,
             @Param("now") LocalDateTime now);
 
+    @Modifying
+    @Transactional
+    @Query(value = """
+            UPDATE stored_file
+            SET claimed_by = :runnerId, claimed_until = :leaseUntil
+            WHERE id IN (
+                SELECT id FROM (
+                    SELECT id FROM stored_file
+                    WHERE status = :status
+                      AND created_at < :before
+                      AND (claimed_by IS NULL OR claimed_until < :now)
+                    ORDER BY created_at, id
+                    LIMIT :batchSize
+                ) candidates
+            )
+            """, nativeQuery = true)
+    int claimDeletedFilesAtomically(@Param("status") String status,
+                                    @Param("before") LocalDateTime before,
+                                    @Param("now") LocalDateTime now,
+                                    @Param("runnerId") String runnerId,
+                                    @Param("leaseUntil") LocalDateTime leaseUntil,
+                                    @Param("batchSize") int batchSize);
+
+    @Query("SELECT f FROM StoredFile f WHERE f.claimedBy = :runnerId " +
+            "AND f.claimedUntil = :leaseUntil ORDER BY f.createdAt ASC")
+    List<StoredFile> findClaimedByRunner(@Param("runnerId") String runnerId,
+                                         @Param("leaseUntil") LocalDateTime leaseUntil);
+
     /**
      * Return expired claims back to the queue.
      */

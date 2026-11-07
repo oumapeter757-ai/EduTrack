@@ -46,6 +46,33 @@ public interface PaymentInvoiceRepository extends JpaRepository<PaymentInvoice, 
             @Param("status") PaymentInvoiceStatus status,
             @Param("now") LocalDateTime now);
 
+    @Modifying
+    @Transactional
+    @Query(value = """
+            UPDATE payment_invoices
+            SET claimed_by = :runnerId, claimed_until = :leaseUntil
+            WHERE id IN (
+                SELECT id FROM (
+                    SELECT id FROM payment_invoices
+                    WHERE status = :status
+                      AND expires_at < :now
+                      AND (claimed_by IS NULL OR claimed_until < :now)
+                    ORDER BY expires_at, id
+                    LIMIT :batchSize
+                ) candidates
+            )
+            """, nativeQuery = true)
+    int claimExpiredInvoicesAtomically(@Param("status") String status,
+                                       @Param("now") LocalDateTime now,
+                                       @Param("runnerId") String runnerId,
+                                       @Param("leaseUntil") LocalDateTime leaseUntil,
+                                       @Param("batchSize") int batchSize);
+
+    @Query("SELECT i FROM PaymentInvoice i WHERE i.claimedBy = :runnerId " +
+            "AND i.claimedUntil = :leaseUntil ORDER BY i.expiresAt ASC")
+    List<PaymentInvoice> findClaimedByRunner(@Param("runnerId") String runnerId,
+                                             @Param("leaseUntil") LocalDateTime leaseUntil);
+
     /**
      * Return expired claims back to the queue.
      */

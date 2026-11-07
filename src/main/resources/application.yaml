@@ -145,15 +145,21 @@ edutrack:
 application:
   security:
     jwt:
-
+      # RSA private key (PKCS8 PEM) for RS256 signing.
+      # Generate with: openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out jwt-private.pem
       secret-key: ${JWT_SECRET_KEY}
-
+      # RSA public key (PEM) for RS256 verification — optional; if omitted,
+      # the public key is derived from the private key (single-instance mode).
+      # For multi-instance deployments, provide the public key explicitly.
+      public-key: ${JWT_PUBLIC_KEY:}
       expiration: ${JWT_ACCESS_EXPIRATION:900000}
       refresh-expiration: ${JWT_REFRESH_EXPIRATION:604800000}
 
 mpesa:
   till-number: ${MPESA_TILL_NUMBER:}
   short-code: ${MPESA_SHORT_CODE:}
+  consumer-key: ${MPESA_CONSUMER_KEY:}
+  consumer-secret: ${MPESA_CONSUMER_SECRET:}
   passkey: ${MPESA_PASSKEY:}
   environment: ${MPESA_ENVIRONMENT:sandbox}
   callback-url: ${MPESA_CALLBACK_URL:http://localhost:8080/api/v1/payments/callback}

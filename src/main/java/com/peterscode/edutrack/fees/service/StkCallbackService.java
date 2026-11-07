@@ -62,6 +62,13 @@ public class StkCallbackService {
                                   BigDecimal amount, String phoneNumber,
                                   String mpesaReceipt, Instant receivedAt) {
 
+        Optional<CallbackInbox> existing = inboxRepository
+                .findBySchoolIdAndChannelAndProviderId(schoolId, CallbackChannel.STK, checkoutRequestID);
+        if (existing.isPresent() && Boolean.TRUE.equals(existing.get().getProcessed())) {
+            log.info("STK callback duplicate ignored: checkoutRequestID={}", checkoutRequestID);
+            return;
+        }
+
         // 1. Save to durable inbox first
         CallbackInbox inbox = CallbackInbox.builder()
                 .schoolId(schoolId)

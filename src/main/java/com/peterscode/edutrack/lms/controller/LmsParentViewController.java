@@ -104,7 +104,8 @@ public class LmsParentViewController {
         ParentAccessGuard.assertLinked(principal.getSchoolId(), principal,
                 parentStudentMappingRepository, guardianRepository, childId);
 
-        Page<LmsSubmission> submissions = submissionRepository.findByStudentId(childId, pageable);
+        Page<LmsSubmission> submissions = submissionRepository.findBySchoolIdAndStudentId(
+                principal.getSchoolId(), childId, pageable);
         return getPageResponseResponseEntity(pageable, submissions);
     }
 

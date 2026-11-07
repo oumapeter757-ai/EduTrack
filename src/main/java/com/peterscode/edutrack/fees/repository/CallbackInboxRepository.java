@@ -12,9 +12,13 @@ import org.springframework.stereotype.Repository;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface CallbackInboxRepository extends JpaRepository<CallbackInbox, Long> {
+
+    Optional<CallbackInbox> findBySchoolIdAndChannelAndProviderId(
+            Long schoolId, CallbackChannel channel, String providerId);
 
     List<CallbackInbox> findBySchoolIdAndChannelAndProcessedFalse(
             Long schoolId, CallbackChannel channel);

@@ -14,7 +14,6 @@ import com.peterscode.edutrack.shared.response.ApiResponse;
 import com.peterscode.edutrack.shared.response.PageResponse;
 import com.peterscode.edutrack.student.entity.Student;
 import com.peterscode.edutrack.student.enums.StudentStatus;
-import com.peterscode.edutrack.student.repository.StudentRepository;
 import com.peterscode.edutrack.academicyear.repository.AcademicYearRepository;
 import com.peterscode.edutrack.school.repository.SchoolRepository;
 import com.peterscode.edutrack.timetable.entity.StreamSubject;
@@ -28,7 +27,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import com.peterscode.edutrack.student.repository.StudentRepository;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 import java.util.Optional;
@@ -52,7 +53,8 @@ public class LmsStudentViewController {
     @PreAuthorize("hasRole('STUDENT')")
     public ResponseEntity<ApiResponse<List<LmsViews.CourseView>>> myCourses(
             @AuthenticationPrincipal UserPrincipal principal) {
-        Optional<Student> student = studentRepository.findById(principal.getId());
+        Optional<Student> student = studentRepository.findBySchoolIdAndUserId(
+                principal.getSchoolId(), principal.getId());
         if (student.isEmpty() || student.get().getStatus() != StudentStatus.ACTIVE) {
             throw new LmsRuleException("ACCESS_DENIED", HttpStatus.NOT_FOUND, "No courses found");
         }
@@ -71,8 +73,7 @@ public class LmsStudentViewController {
                 : List.of();
 
         // Find courses for these stream-subjects
-        List<LmsCourse> courses = courseRepository.findAll().stream()
-                .filter(c -> c.getSchoolId().equals(schoolId))
+        List<LmsCourse> courses = courseRepository.findBySchoolId(schoolId, Pageable.unpaged()).getContent().stream()
                 .filter(c -> streamSubjects.stream().anyMatch(ss -> ss.getId().equals(c.getStreamSubjectId())))
                 .toList();
 
@@ -101,9 +102,11 @@ public class LmsStudentViewController {
     public ResponseEntity<PageResponse<LmsViews.SubmissionView>> myReleasedScores(
             @PageableDefault(size = 20) Pageable pageable,
             @AuthenticationPrincipal UserPrincipal principal) {
-        Page<LmsSubmission> submissions = submissionRepository.findByStudentId(principal.getId(), pageable);
-
-        // Filter to only released scores
+        Long studentId = studentRepository.findBySchoolIdAndUserId(principal.getSchoolId(), principal.getId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Student not found"))
+                .getId();
+        Page<LmsSubmission> submissions = submissionRepository.findBySchoolIdAndStudentId(
+                principal.getSchoolId(), studentId, pageable);
         return getPageResponseResponseEntity(pageable, submissions);
     }
 }

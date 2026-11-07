@@ -14,6 +14,7 @@ import com.peterscode.edutrack.fees.security.FeesAccessGuard;
 import com.peterscode.edutrack.fees.service.PaymentPostingService;
 import com.peterscode.edutrack.guardian.entity.Guardian;
 import com.peterscode.edutrack.guardian.repository.GuardianRepository;
+import com.peterscode.edutrack.guardian.repository.ParentStudentMappingRepository;
 import com.peterscode.edutrack.fees.mpesa.MpesaClient.StkPushResult;
 import com.peterscode.edutrack.security.ParentAccessGuard;
 import com.peterscode.edutrack.security.UserPrincipal;
@@ -55,6 +56,7 @@ public class StkPushService {
     private final StudentRepository studentRepository;
     private final StudentFeeAccountRepository studentFeeAccountRepository;
     private final GuardianRepository guardianRepository;
+    private final ParentStudentMappingRepository parentStudentMappingRepository;
     private final Clock clock;
 
     @Value("${edutrack.fees.stk-max-amount:150000}")
@@ -231,9 +233,18 @@ public class StkPushService {
             return payment;
         }
 
-        return feePaymentRepository.findBySchoolIdAndId(schoolId, paymentId)
+        FeePayment payment = feePaymentRepository.findBySchoolIdAndId(schoolId, paymentId)
                 .orElseThrow(() -> new FeesRuleException("RESOURCE_NOT_FOUND", NOT_FOUND,
                         "Payment not found"));
+        if (principal.getRole() == Role.PARENT) {
+            ParentAccessGuard.assertLinked(schoolId, principal, parentStudentMappingRepository,
+                    guardianRepository, payment.getStudentId());
+        } else if (principal.getRole() != Role.SCHOOL_ADMIN
+                && principal.getRole() != Role.ACCOUNTANT
+                && principal.getRole() != Role.SUPER_ADMIN) {
+            throw new FeesRuleException("INSUFFICIENT_PERMISSION", FORBIDDEN, "Access denied");
+        }
+        return payment;
     }
 
     /**

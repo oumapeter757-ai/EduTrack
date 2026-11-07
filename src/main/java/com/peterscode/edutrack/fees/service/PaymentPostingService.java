@@ -16,6 +16,10 @@ import com.peterscode.edutrack.fees.repository.PaymentAllocationRepository;
 import com.peterscode.edutrack.fees.repository.StudentFeeAccountRepository;
 import com.peterscode.edutrack.fees.security.FeesAccessGuard;
 import com.peterscode.edutrack.security.UserPrincipal;
+import com.peterscode.edutrack.security.ParentAccessGuard;
+import com.peterscode.edutrack.guardian.repository.GuardianRepository;
+import com.peterscode.edutrack.guardian.repository.ParentStudentMappingRepository;
+import com.peterscode.edutrack.user.entity.Role;
 import com.peterscode.edutrack.student.entity.Student;
 import com.peterscode.edutrack.student.repository.StudentRepository;
 import lombok.RequiredArgsConstructor;
@@ -31,6 +35,8 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import static org.springframework.http.HttpStatus.*;
@@ -48,6 +54,8 @@ public class PaymentPostingService {
     private final PaymentAllocationRepository paymentAllocationRepository;
     private final StudentFeeAccountRepository studentFeeAccountRepository;
     private final StudentRepository studentRepository;
+    private final GuardianRepository guardianRepository;
+    private final ParentStudentMappingRepository parentStudentMappingRepository;
     private final LedgerService ledgerService;
     private final Clock clock;
 
@@ -193,21 +201,31 @@ public class PaymentPostingService {
                     .orElseThrow(() -> new FeesRuleException("RESOURCE_NOT_FOUND", NOT_FOUND,
                             "Student not found"));
             studentId = student.getId();
+        } else if (principal.getRole() == Role.PARENT) {
+            ParentAccessGuard.assertLinked(schoolId, principal, parentStudentMappingRepository,
+                    guardianRepository, studentId);
         }
 
         // For PARENT role, ParentAccessGuard is called by the controller before this method
         // For SCHOOL_ADMIN/ACCOUNTANT, studentId is provided directly
 
+        Student student = resolveStudent(schoolId, studentId);
         return feePaymentRepository.findBySchoolIdAndStudentId(schoolId, studentId, pageable)
-                .map(p -> toView(p, resolveStudent(schoolId, p.getStudentId())));
+                .map(p -> toView(p, student));
     }
 
     @Transactional(readOnly = true)
     public Page<FeePaymentView> listAll(UserPrincipal principal, Pageable pageable) {
         FeesAccessGuard.assertAdminOrAccountant(principal);
         Long schoolId = principal.getSchoolId();
-        return feePaymentRepository.findBySchoolId(schoolId, pageable)
-                .map(p -> toView(p, resolveStudent(schoolId, p.getStudentId())));
+        Page<FeePayment> payments = feePaymentRepository.findBySchoolId(schoolId, pageable);
+        Map<Long, Student> students = studentRepository.findAllBySchoolIdAndIdIn(
+                        schoolId, payments.getContent().stream()
+                                .map(FeePayment::getStudentId)
+                                .filter(java.util.Objects::nonNull)
+                                .collect(Collectors.toSet()))
+                .stream().collect(Collectors.toMap(Student::getId, Function.identity()));
+        return payments.map(p -> toView(p, students.get(p.getStudentId())));
     }
 
     private FeePaymentView toView(FeePayment payment, Student student) {

@@ -12,6 +12,7 @@ import com.peterscode.edutrack.guardian.entity.ParentStudentMapping;
 import com.peterscode.edutrack.guardian.repository.GuardianRepository;
 import com.peterscode.edutrack.guardian.repository.ParentStudentMappingRepository;
 import com.peterscode.edutrack.security.UserPrincipal;
+import com.peterscode.edutrack.security.ParentAccessGuard;
 import com.peterscode.edutrack.student.entity.Student;
 import com.peterscode.edutrack.student.repository.StudentRepository;
 import com.peterscode.edutrack.user.entity.Role;
@@ -38,6 +39,8 @@ public class FeeStatementService {
     private final LedgerEntryRepository ledgerEntryRepository;
     private final StudentFeeAccountRepository studentFeeAccountRepository;
     private final StudentRepository studentRepository;
+    private final GuardianRepository guardianRepository;
+    private final ParentStudentMappingRepository parentStudentMappingRepository;
 
     @Transactional(readOnly = true)
     public FeeStatementView getStatement(UserPrincipal principal, Long studentId,
@@ -51,6 +54,9 @@ public class FeeStatementService {
                     .orElseThrow(() -> new FeesRuleException("RESOURCE_NOT_FOUND", NOT_FOUND,
                             "Student not found"));
             studentId = student.getId();
+        } else if (principal.getRole() == Role.PARENT) {
+            ParentAccessGuard.assertLinked(schoolId, principal,
+                    parentStudentMappingRepository, guardianRepository, studentId);
         }
 
         StudentFeeAccount account = studentFeeAccountRepository

@@ -58,6 +58,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                         && userDetails.isEnabled()
                         && userDetails.isAccountNonLocked()
                         && userDetails instanceof UserPrincipal) {
+                    ((UserPrincipal) userDetails).clearPassword();
                     UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
                             userDetails,
                             null,
