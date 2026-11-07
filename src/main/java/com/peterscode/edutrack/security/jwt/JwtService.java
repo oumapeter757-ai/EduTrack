@@ -56,7 +56,14 @@ public class JwtService {
 
     public boolean isTokenValid(String token, UserDetails userDetails) {
         final String username = extractUsername(token);
-        return username.equals(userDetails.getUsername());
+        final Date expiration = extractExpiration(token);
+        boolean isUsernameMatch = username.equals(userDetails.getUsername());
+        boolean isNotExpired = expiration.after(new Date());
+        return isUsernameMatch && isNotExpired;
+    }
+
+    public Date extractExpiration(String token) {
+        return extractClaim(token, Claims::getExpiration);
     }
 
     public long getAccessTokenExpirationSeconds() {

@@ -53,6 +53,8 @@ public class PaymentPostingService {
 
     /**
      * Record a manual payment and allocate to invoices.
+     * Uses PESSIMISTIC_WRITE locks on StudentFeeAccount and open FeeInvoices
+     * to prevent concurrent payment issues.
      */
     @Transactional
     public FeePaymentView recordManualPayment(UserPrincipal principal, ManualPaymentRequestDto request) {
@@ -63,9 +65,9 @@ public class PaymentPostingService {
                 .orElseThrow(() -> new FeesRuleException("RESOURCE_NOT_FOUND", NOT_FOUND,
                         "Student not found"));
 
-        // Ensure fee account exists
+        // Lock the fee account to get currency and serialize concurrent payments
         StudentFeeAccount account = studentFeeAccountRepository
-                .findBySchoolIdAndStudentId(schoolId, student.getId())
+                .findBySchoolIdAndStudentIdForUpdate(schoolId, student.getId())
                 .orElseGet(() -> studentFeeAccountRepository.save(
                         StudentFeeAccount.builder()
                                 .schoolId(schoolId)
@@ -90,8 +92,8 @@ public class PaymentPostingService {
 
         payment = feePaymentRepository.save(payment);
 
-        // Allocate to open invoices (oldest first)
-        allocatePaymentToInvoices(account, payment);
+        // Allocate to open invoices — invoices are locked inside doAllocatePaymentToInvoices
+        doAllocatePaymentToInvoices(account, payment);
 
         // Update cached balance
         ledgerService.updateCachedBalance(account);
@@ -102,14 +104,44 @@ public class PaymentPostingService {
 
     /**
      * Allocate a payment to open invoices, oldest first.
+     * Acquires PESSIMISTIC_WRITE locks on both the StudentFeeAccount and open FeeInvoices
+     * to prevent double-allocation under concurrent payment scenarios.
+     * This is the primary entry point — all callers should use this overload.
      */
     @Transactional
+    public void allocatePaymentToInvoices(Long schoolId, Long studentId, FeePayment payment) {
+        // Lock the fee account with PESSIMISTIC_WRITE to serialize concurrent payments
+        StudentFeeAccount account = studentFeeAccountRepository
+                .findBySchoolIdAndStudentIdForUpdate(schoolId, studentId)
+                .orElseGet(() -> studentFeeAccountRepository.save(
+                        StudentFeeAccount.builder()
+                                .schoolId(schoolId)
+                                .studentId(studentId)
+                                .build()));
+
+        doAllocatePaymentToInvoices(account, payment);
+
+        // Update cached balance
+        ledgerService.updateCachedBalance(account);
+        studentFeeAccountRepository.save(account);
+    }
+
+    /**
+     * Legacy overload for backward compatibility — delegates to the primary method.
+     * @deprecated Use {@link #allocatePaymentToInvoices(Long, Long, FeePayment)} instead.
+     */
+    @Deprecated
+    @Transactional
     public void allocatePaymentToInvoices(StudentFeeAccount account, FeePayment payment) {
+        allocatePaymentToInvoices(account.getSchoolId(), account.getStudentId(), payment);
+    }
+
+    private void doAllocatePaymentToInvoices(StudentFeeAccount account, FeePayment payment) {
         Long schoolId = account.getSchoolId();
         Long studentId = payment.getStudentId();
 
         List<FeeInvoice> openInvoices = feeInvoiceRepository
-                .findBySchoolIdAndStudentIdAndStatusInOrderByIssuedOnAsc(
+                .findBySchoolIdAndStudentIdAndStatusInOrderByIssuedOnAscForUpdate(
                         schoolId, studentId,
                         List.of(FeeInvoiceStatus.OPEN, FeeInvoiceStatus.PARTLY_PAID));
 

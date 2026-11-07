@@ -272,14 +272,14 @@ class FeesPhase2Test {
             Student student = student();
             StudentFeeAccount account = account();
             when(studentRepository.findBySchoolIdAndId(10L, 100L)).thenReturn(Optional.of(student));
-            when(studentFeeAccountRepository.findBySchoolIdAndStudentId(10L, 100L))
+            when(studentFeeAccountRepository.findBySchoolIdAndStudentIdForUpdate(10L, 100L))
                     .thenReturn(Optional.of(account));
             when(feePaymentRepository.save(any(FeePayment.class))).thenAnswer(i -> {
                 FeePayment p = i.getArgument(0);
                 p.setId(1L);
                 return p;
             });
-            when(feeInvoiceRepository.findBySchoolIdAndStudentIdAndStatusInOrderByIssuedOnAsc(
+            when(feeInvoiceRepository.findBySchoolIdAndStudentIdAndStatusInOrderByIssuedOnAscForUpdate(
                     anyLong(), anyLong(), anyList())).thenReturn(List.of());
 
             ManualPaymentRequestDto request = new ManualPaymentRequestDto(
@@ -319,7 +319,10 @@ class FeesPhase2Test {
                     .total(new BigDecimal("4000")).paid(BigDecimal.ZERO)
                     .status(FeeInvoiceStatus.OPEN).build();
 
-            when(feeInvoiceRepository.findBySchoolIdAndStudentIdAndStatusInOrderByIssuedOnAsc(
+            // The deprecated overload delegates to the new one, which locks the account
+            when(studentFeeAccountRepository.findBySchoolIdAndStudentIdForUpdate(10L, 100L))
+                    .thenReturn(Optional.of(account));
+            when(feeInvoiceRepository.findBySchoolIdAndStudentIdAndStatusInOrderByIssuedOnAscForUpdate(
                     anyLong(), anyLong(), anyList())).thenReturn(List.of(invoice1, invoice2));
             when(feeInvoiceRepository.save(any(FeeInvoice.class))).thenAnswer(i -> i.getArgument(0));
             when(paymentAllocationRepository.saveAll(anyList())).thenReturn(List.of());

@@ -3,14 +3,11 @@ package com.peterscode.edutrack.fees.service;
 import com.peterscode.edutrack.fees.entity.CallbackInbox;
 import com.peterscode.edutrack.fees.entity.FeePayment;
 import com.peterscode.edutrack.fees.entity.SchoolPaymentConfig;
-import com.peterscode.edutrack.fees.entity.StudentFeeAccount;
 import com.peterscode.edutrack.fees.enums.CallbackChannel;
 import com.peterscode.edutrack.fees.enums.FeePaymentStatus;
 import com.peterscode.edutrack.fees.exception.FeesRuleException;
 import com.peterscode.edutrack.fees.repository.CallbackInboxRepository;
 import com.peterscode.edutrack.fees.repository.FeePaymentRepository;
-import com.peterscode.edutrack.fees.repository.StudentFeeAccountRepository;
-import com.peterscode.edutrack.fees.service.LedgerService;
 import com.peterscode.edutrack.fees.service.PaymentPostingService;
 import com.peterscode.edutrack.fees.service.SchoolPaymentConfigService;
 import com.peterscode.edutrack.security.UserPrincipal;
@@ -44,9 +41,7 @@ public class StkCallbackService {
 
     private final CallbackInboxRepository inboxRepository;
     private final FeePaymentRepository feePaymentRepository;
-    private final StudentFeeAccountRepository studentFeeAccountRepository;
     private final PaymentPostingService paymentPostingService;
-    private final LedgerService ledgerService;
     private final SchoolPaymentConfigService configService;
 
     /**
@@ -153,21 +148,8 @@ public class StkCallbackService {
         payment.setConfirmedAt(receivedAt);
         payment = feePaymentRepository.save(payment);
 
-        // Ensure fee account exists
-        StudentFeeAccount account = studentFeeAccountRepository
-                .findBySchoolIdAndStudentId(schoolId, studentId)
-                .orElseGet(() -> studentFeeAccountRepository.save(
-                        StudentFeeAccount.builder()
-                                .schoolId(schoolId)
-                                .studentId(studentId)
-                                .build()));
-
-        // Allocate to open invoices
-        paymentPostingService.allocatePaymentToInvoices(account, payment);
-
-        // Update cached balance
-        ledgerService.updateCachedBalance(account);
-        studentFeeAccountRepository.save(account);
+        // Allocate to open invoices — locks account and invoices internally
+        paymentPostingService.allocatePaymentToInvoices(schoolId, studentId, payment);
 
         inbox.setProcessed(true);
         inbox.setProcessingResult("Success: payment posted and allocated");

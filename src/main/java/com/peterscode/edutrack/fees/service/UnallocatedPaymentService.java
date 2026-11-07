@@ -2,14 +2,12 @@ package com.peterscode.edutrack.fees.service;
 
 import com.peterscode.edutrack.fees.dto.UnallocatedPaymentView;
 import com.peterscode.edutrack.fees.entity.FeePayment;
-import com.peterscode.edutrack.fees.entity.StudentFeeAccount;
 import com.peterscode.edutrack.fees.entity.UnallocatedPayment;
 import com.peterscode.edutrack.fees.enums.FeePaymentChannel;
 import com.peterscode.edutrack.fees.enums.FeePaymentStatus;
 import com.peterscode.edutrack.fees.enums.UnallocatedPaymentStatus;
 import com.peterscode.edutrack.fees.exception.FeesRuleException;
 import com.peterscode.edutrack.fees.repository.FeePaymentRepository;
-import com.peterscode.edutrack.fees.repository.StudentFeeAccountRepository;
 import com.peterscode.edutrack.fees.repository.UnallocatedPaymentRepository;
 import com.peterscode.edutrack.fees.security.FeesAccessGuard;
 import com.peterscode.edutrack.security.UserPrincipal;
@@ -37,9 +35,7 @@ public class UnallocatedPaymentService {
     private final UnallocatedPaymentRepository unallocatedRepo;
     private final StudentRepository studentRepository;
     private final FeePaymentRepository feePaymentRepository;
-    private final StudentFeeAccountRepository studentFeeAccountRepository;
     private final PaymentPostingService paymentPostingService;
-    private final LedgerService ledgerService;
 
     /**
      * List unallocated payments for the current school.
@@ -95,15 +91,6 @@ public class UnallocatedPaymentService {
             }
         }
 
-        // Ensure fee account exists
-        StudentFeeAccount account = studentFeeAccountRepository
-                .findBySchoolIdAndStudentId(schoolId, studentId)
-                .orElseGet(() -> studentFeeAccountRepository.save(
-                        StudentFeeAccount.builder()
-                                .schoolId(schoolId)
-                                .studentId(studentId)
-                                .build()));
-
         // Create and post the payment
         FeePayment payment = FeePayment.builder()
                 .schoolId(schoolId)
@@ -119,9 +106,8 @@ public class UnallocatedPaymentService {
                 .build();
 
         payment = feePaymentRepository.save(payment);
-        paymentPostingService.allocatePaymentToInvoices(account, payment);
-        ledgerService.updateCachedBalance(account);
-        studentFeeAccountRepository.save(account);
+        // Allocate to open invoices — locks account and invoices internally
+        paymentPostingService.allocatePaymentToInvoices(schoolId, studentId, payment);
 
         // Mark unallocated as resolved
         unallocated.setStatus(UnallocatedPaymentStatus.ALLOCATED);

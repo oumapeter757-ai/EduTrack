@@ -17,6 +17,11 @@ public interface StudentFeeAccountRepository extends JpaRepository<StudentFeeAcc
     Optional<StudentFeeAccount> findBySchoolIdAndStudentId(Long schoolId, Long studentId);
 
     @Lock(PESSIMISTIC_WRITE)
+    @Query("SELECT a FROM StudentFeeAccount a WHERE a.schoolId = :schoolId AND a.studentId = :studentId")
+    Optional<StudentFeeAccount> findBySchoolIdAndStudentIdForUpdate(
+            @Param("schoolId") Long schoolId, @Param("studentId") Long studentId);
+
+    @Lock(PESSIMISTIC_WRITE)
     Optional<StudentFeeAccount> findBySchoolIdAndId(Long schoolId, Long id);
 
     boolean existsBySchoolIdAndStudentId(Long schoolId, Long studentId);

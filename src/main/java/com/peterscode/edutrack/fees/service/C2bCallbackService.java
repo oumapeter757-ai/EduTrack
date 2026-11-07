@@ -3,12 +3,10 @@ package com.peterscode.edutrack.fees.service;
 import com.peterscode.edutrack.fees.entity.CallbackInbox;
 import com.peterscode.edutrack.fees.entity.FeePayment;
 import com.peterscode.edutrack.fees.entity.SchoolPaymentConfig;
-import com.peterscode.edutrack.fees.entity.StudentFeeAccount;
 import com.peterscode.edutrack.fees.entity.UnallocatedPayment;
 import com.peterscode.edutrack.fees.enums.*;
 import com.peterscode.edutrack.fees.repository.CallbackInboxRepository;
 import com.peterscode.edutrack.fees.repository.FeePaymentRepository;
-import com.peterscode.edutrack.fees.repository.StudentFeeAccountRepository;
 import com.peterscode.edutrack.fees.repository.UnallocatedPaymentRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -41,8 +39,6 @@ public class C2bCallbackService {
     private final PaymentPostingService paymentPostingService;
     private final UnallocatedPaymentRepository unallocatedRepo;
     private final FeePaymentRepository feePaymentRepository;
-    private final StudentFeeAccountRepository studentFeeAccountRepository;
-    private final LedgerService ledgerService;
 
     /**
      * Process a C2B confirmation callback.
@@ -128,22 +124,12 @@ public class C2bCallbackService {
             Long studentId, BigDecimal amount, String providerReceipt,
             String accountReference, String phoneNumber) {
         try {
-            // Ensure fee account exists
-            StudentFeeAccount account = studentFeeAccountRepository
-                    .findBySchoolIdAndStudentId(schoolId, studentId)
-                    .orElseGet(() -> studentFeeAccountRepository.save(
-                            StudentFeeAccount.builder()
-                                    .schoolId(schoolId)
-                                    .studentId(studentId)
-                                    .build()));
-
             // Create a FeePayment record
             FeePayment payment = FeePayment.builder()
                     .schoolId(schoolId)
                     .studentId(studentId)
                     .channel(FeePaymentChannel.PAYBILL)
                     .amount(amount)
-                    .currency(account.getCurrency())
                     .providerReceipt(providerReceipt)
                     .payerPhoneMasked(maskPhone(phoneNumber))
                     .accountReference(accountReference)
@@ -153,12 +139,8 @@ public class C2bCallbackService {
 
             payment = feePaymentRepository.save(payment);
 
-            // Allocate to open invoices (oldest first)
-            paymentPostingService.allocatePaymentToInvoices(account, payment);
-
-            // Update cached balance
-            ledgerService.updateCachedBalance(account);
-            studentFeeAccountRepository.save(account);
+            // Allocate to open invoices — locks account and invoices internally
+            paymentPostingService.allocatePaymentToInvoices(schoolId, studentId, payment);
 
             inbox.setProcessed(true);
             inbox.setProcessingResult("Payment posted to student " + studentId);

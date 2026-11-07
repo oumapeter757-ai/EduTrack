@@ -311,8 +311,8 @@ class FeesPhase5Test {
         @org.junit.jupiter.api.BeforeEach
         void setUp() {
             service = new StkCallbackService(
-                    inboxRepository, feePaymentRepository, studentFeeAccountRepository,
-                    paymentPostingService, ledgerService, configService);
+                    inboxRepository, feePaymentRepository,
+                    paymentPostingService, configService);
         }
 
         @Test
@@ -327,11 +327,6 @@ class FeesPhase5Test {
             when(feePaymentRepository.findBySchoolIdAndCheckoutRequestID(
                     1L, "CHK-001")).thenReturn(Optional.of(payment));
             when(feePaymentRepository.save(any(FeePayment.class))).thenReturn(payment);
-
-            StudentFeeAccount account = StudentFeeAccount.builder()
-                    .id(1L).schoolId(1L).studentId(1L).build();
-            when(studentFeeAccountRepository.findBySchoolIdAndStudentId(1L, 1L))
-                    .thenReturn(Optional.of(account));
             when(inboxRepository.save(any(CallbackInbox.class)))
                     .thenAnswer(inv -> inv.getArgument(0));
 
@@ -340,7 +335,7 @@ class FeesPhase5Test {
 
             assertThat(payment.getStatus()).isEqualTo(FeePaymentStatus.SUCCEEDED);
             assertThat(payment.getProviderReceipt()).isEqualTo("RCP001");
-            verify(paymentPostingService).allocatePaymentToInvoices(any(), any());
+            verify(paymentPostingService).allocatePaymentToInvoices(eq(1L), eq(1L), any(FeePayment.class));
         }
 
         @Test
@@ -517,8 +512,8 @@ class FeesPhase5Test {
         @org.junit.jupiter.api.BeforeEach
         void setUp() {
             service = new StkCallbackService(
-                    inboxRepository, feePaymentRepository, studentFeeAccountRepository,
-                    paymentPostingService, ledgerService, configService);
+                    inboxRepository, feePaymentRepository,
+                    paymentPostingService, configService);
         }
 
         @Test

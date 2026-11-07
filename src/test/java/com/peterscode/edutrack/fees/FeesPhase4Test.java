@@ -269,16 +269,12 @@ class FeesPhase4Test {
         @Mock
         private FeePaymentRepository feePaymentRepository;
         @Mock
-        private StudentFeeAccountRepository accountRepo;
-        @Mock
         private PaymentPostingService paymentPostingService;
-        @Mock
-        private LedgerService ledgerService;
 
         private UnallocatedPaymentService createService() {
             return new UnallocatedPaymentService(
                     unallocatedRepo, studentRepository, feePaymentRepository,
-                    accountRepo, paymentPostingService, ledgerService);
+                    paymentPostingService);
         }
 
         @Test
@@ -320,8 +316,6 @@ class FeesPhase4Test {
                     .thenReturn(Optional.of(student));
             when(feePaymentRepository.existsBySchoolIdAndChannelAndProviderReceipt(1L, FeePaymentChannel.PAYBILL, null))
                     .thenReturn(false);
-            when(accountRepo.findBySchoolIdAndStudentId(1L, 100L))
-                    .thenReturn(Optional.of(account));
             when(feePaymentRepository.save(any())).thenReturn(new FeePayment());
             when(unallocatedRepo.save(any())).thenReturn(unallocated);
 
