@@ -12,6 +12,7 @@ import com.peterscode.edutrack.fees.service.*;
 import com.peterscode.edutrack.fees.security.FeesAccessGuard;
 import com.peterscode.edutrack.guardian.entity.Guardian;
 import com.peterscode.edutrack.guardian.repository.GuardianRepository;
+import com.peterscode.edutrack.guardian.repository.ParentStudentMappingRepository;
 import com.peterscode.edutrack.security.UserPrincipal;
 import com.peterscode.edutrack.student.entity.Student;
 import com.peterscode.edutrack.student.enums.StudentStatus;
@@ -151,6 +152,8 @@ class FeesPhase5Test {
         @Mock
         private GuardianRepository guardianRepository;
         @Mock
+        private ParentStudentMappingRepository mappingRepository;
+        @Mock
         private StudentFeeAccountRepository studentFeeAccountRepository;
 
         private FakeMpesaClient mpesaClient;
@@ -162,7 +165,7 @@ class FeesPhase5Test {
             Clock clock = Clock.fixed(Instant.parse("2025-01-01T12:00:00Z"), ZoneOffset.UTC);
             service = new StkPushService(
                     mpesaClient, feePaymentRepository, studentRepository,
-                    studentFeeAccountRepository, guardianRepository, clock);
+                    studentFeeAccountRepository, guardianRepository, mappingRepository, clock);
         }
 
         @Test

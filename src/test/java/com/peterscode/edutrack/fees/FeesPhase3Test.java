@@ -301,6 +301,10 @@ class FeesPhase3Test {
         private com.peterscode.edutrack.timetable.repository.TermRepository termRepository;
         @Mock
         private LedgerService ledgerService;
+        @Mock
+        private GuardianRepository guardianRepository;
+        @Mock
+        private ParentStudentMappingRepository mappingRepository;
 
         private FeeInvoiceService service;
 
@@ -309,7 +313,7 @@ class FeesPhase3Test {
             service = new FeeInvoiceService(
                     feeInvoiceRepository, feeStructureRepository,
                     studentFeeAccountRepository, studentRepository,
-                    termRepository, ledgerService);
+                    termRepository, ledgerService, guardianRepository, mappingRepository);
         }
 
         @Test
@@ -363,6 +367,10 @@ class FeesPhase3Test {
         @Mock
         private LedgerService ledgerService;
         @Mock
+        private GuardianRepository guardianRepository;
+        @Mock
+        private ParentStudentMappingRepository mappingRepository;
+        @Mock
         private java.time.Clock clock;
 
         private PaymentPostingService service;
@@ -372,7 +380,8 @@ class FeesPhase3Test {
             service = new PaymentPostingService(
                     feePaymentRepository, feeInvoiceRepository,
                     paymentAllocationRepository, studentFeeAccountRepository,
-                    studentRepository, ledgerService, clock);
+                    studentRepository, guardianRepository, mappingRepository,
+                    ledgerService, clock);
         }
 
         @Test
@@ -416,7 +425,8 @@ class FeesPhase3Test {
         @org.junit.jupiter.api.BeforeEach
         void setUp() {
             service = new FeeStatementService(
-                    ledgerEntryRepository, studentFeeAccountRepository, studentRepository);
+                    ledgerEntryRepository, studentFeeAccountRepository, studentRepository,
+                    guardianRepository, mappingRepository);
         }
 
         @Test

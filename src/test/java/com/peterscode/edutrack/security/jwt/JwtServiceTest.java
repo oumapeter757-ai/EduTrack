@@ -39,6 +39,7 @@ class JwtServiceTest {
                 .id(1L)
                 .email("user@example.test")
                 .role(Role.SCHOOL_ADMIN)
+                .userVersion(0L)
                 .authorities(List.of())
                 .active(true)
                 .build();
@@ -47,7 +48,7 @@ class JwtServiceTest {
     @Test
     void generatesAndParsesSignedClaims() {
         String token = jwtService.generateToken(
-                Map.of("userId", 1L, "role", "ROLE_SCHOOL_ADMIN"),
+                Map.of("userId", 1L, "role", "ROLE_SCHOOL_ADMIN", "userVersion", 0L),
                 principal);
 
         assertThat(jwtService.extractUsername(token)).isEqualTo(principal.getUsername());

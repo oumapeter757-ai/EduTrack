@@ -13,6 +13,8 @@ import com.peterscode.edutrack.fees.service.FeeInvoiceService;
 import com.peterscode.edutrack.fees.service.FeeStructureService;
 import com.peterscode.edutrack.fees.service.LedgerService;
 import com.peterscode.edutrack.fees.service.PaymentPostingService;
+import com.peterscode.edutrack.guardian.repository.GuardianRepository;
+import com.peterscode.edutrack.guardian.repository.ParentStudentMappingRepository;
 import com.peterscode.edutrack.security.UserPrincipal;
 import com.peterscode.edutrack.student.entity.Student;
 import com.peterscode.edutrack.student.enums.StudentStatus;
@@ -257,13 +259,15 @@ class FeesPhase2Test {
         @Mock PaymentAllocationRepository paymentAllocationRepository;
         @Mock StudentFeeAccountRepository studentFeeAccountRepository;
         @Mock StudentRepository studentRepository;
+        @Mock GuardianRepository guardianRepository;
+        @Mock ParentStudentMappingRepository mappingRepository;
         @Mock LedgerService ledgerService;
 
         PaymentPostingService service() {
             return new PaymentPostingService(
                     feePaymentRepository, feeInvoiceRepository, paymentAllocationRepository,
-                    studentFeeAccountRepository, studentRepository, ledgerService,
-                    Clock.systemUTC());
+                    studentFeeAccountRepository, studentRepository, guardianRepository,
+                    mappingRepository, ledgerService, Clock.systemUTC());
         }
 
         @Test
