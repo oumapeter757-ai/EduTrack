@@ -8,6 +8,8 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.time.Clock;
@@ -37,14 +39,20 @@ import java.util.function.Supplier;
  */
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class IdempotencyService {
 
     private final IdempotencyKeyRepository repository;
     private final Clock clock;
+    private final ObjectMapper objectMapper;
 
     @Value("${edutrack.idempotency.ttl-hours:24}")
     private int ttlHours;
+
+    public IdempotencyService(IdempotencyKeyRepository repository, Clock clock, ObjectMapper objectMapper) {
+        this.repository = repository;
+        this.clock = clock;
+        this.objectMapper = objectMapper;
+    }
 
     /**
      * Execute an idempotent operation, protecting against duplicate requests.
@@ -111,10 +119,17 @@ public class IdempotencyService {
                                     : "Previous request with this key failed");
                 }
 
-                // COMPLETED — we need to return the cached result
-                // For simplicity, re-execute is not done; the caller should handle this
-                // In a full implementation, the response body would be deserialized
-                throw new IdempotencyConflictException("Request already completed");
+                // COMPLETED — return the cached response
+                String cachedBody = existing.getResponseBody();
+                if (cachedBody == null || cachedBody.isBlank()) {
+                    throw new IdempotencyConflictException("Request already completed but no cached response available");
+                }
+                try {
+                    return objectMapper.readValue(cachedBody, new TypeReference<T>() {});
+                } catch (Exception ex) {
+                    log.warn("Failed to deserialize cached idempotency response for key={}", idempotencyKey, ex);
+                    throw new IdempotencyConflictException("Request already completed but cached response could not be read");
+                }
             }
         }
 
@@ -122,6 +137,11 @@ public class IdempotencyService {
         try {
             T result = action.get();
             newKey.setStatus(IdempotencyKey.KeyStatus.COMPLETED);
+            try {
+                newKey.setResponseBody(objectMapper.writeValueAsString(result));
+            } catch (Exception e) {
+                log.warn("Failed to serialize idempotency result for key={}", idempotencyKey, e);
+            }
             repository.save(newKey);
             return result;
         } catch (Exception e) {

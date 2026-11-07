@@ -48,7 +48,7 @@ public class ModuleAccessService {
     }
 
     private EntitlementSnapshot load(Long id) {
-        School s = schools.findById(id).orElseThrow(() ->
+        School s = schools.findByIdWithModules(id).orElseThrow(() ->
                 denied(id, null, "ACCESS_DENIED", "School access is unavailable"));
         ZoneId zone;
         try {

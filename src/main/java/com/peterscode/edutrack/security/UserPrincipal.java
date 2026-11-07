@@ -24,7 +24,7 @@ public class  UserPrincipal implements UserDetails {
     private final Role role;
 
     @JsonIgnore
-    private final String password;
+    private String password;
 
     private final Collection<? extends GrantedAuthority> authorities;
     private final boolean active;
@@ -37,6 +37,9 @@ public class  UserPrincipal implements UserDetails {
         this.email = user.getEmail();
         this.active = user.isActive();
         this.authorities = List.of(new SimpleGrantedAuthority("ROLE_" + user.getRole().name()));
+        // Clear the password hash after extracting it — it's only needed for
+        // DaoAuthenticationProvider password comparison, not after authentication.
+        this.password = null;
     }
 
     /**
@@ -48,6 +51,8 @@ public class  UserPrincipal implements UserDetails {
                 new SimpleGrantedAuthority("ROLE_" + user.getRole().name())
         );
 
+        // Store the password hash only for DaoAuthenticationProvider comparison.
+        // The hash is cleared after authentication via the private constructor.
         return UserPrincipal.builder()
                 .id(user.getId())
                 .email(user.getEmail())

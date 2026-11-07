@@ -163,7 +163,7 @@ class SchoolServiceTest {
     @Test
     @DisplayName("getSchoolById returns SchoolResponseDto when found")
     void getSchoolById_Success() {
-        when(schoolRepository.findById(10L)).thenReturn(Optional.of(sampleSchool));
+        when(schoolRepository.findByIdWithModules(10L)).thenReturn(Optional.of(sampleSchool));
 
         SchoolResponseDto response = schoolService.getSchoolById(10L, schoolAdminPrincipal);
 
@@ -174,7 +174,7 @@ class SchoolServiceTest {
     @Test
     @DisplayName("getSchoolById throws SchoolNotFoundException when not found")
     void getSchoolById_NotFound_ThrowsException() {
-        when(schoolRepository.findById(999L)).thenReturn(Optional.empty());
+        when(schoolRepository.findByIdWithModules(999L)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> schoolService.getSchoolById(999L, superAdminPrincipal))
                 .isInstanceOf(SchoolNotFoundException.class)

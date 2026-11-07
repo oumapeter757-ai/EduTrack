@@ -3,6 +3,7 @@ package com.peterscode.edutrack.school.entity;
 import com.peterscode.edutrack.school.enums.ServiceModule;
 import com.peterscode.edutrack.school.enums.SubscriptionStatus;
 import com.peterscode.edutrack.school.enums.SubscriptionTier;
+import com.peterscode.edutrack.shared.AddressFormatter;
 import com.peterscode.edutrack.shared.BaseEntity;
 import jakarta.persistence.*;
 import lombok.*;
@@ -88,7 +89,7 @@ public class School extends BaseEntity {
     @Column(name = "max_teachers")
     private Integer maxTeachers;
 
-    @ElementCollection(fetch = FetchType.EAGER)
+    @ElementCollection(fetch = FetchType.LAZY)
     @CollectionTable(name = "school_enabled_modules", joinColumns = @JoinColumn(name = "school_id"))
     @Enumerated(EnumType.STRING)
     @Column(name = "module_name")
@@ -133,20 +134,6 @@ public class School extends BaseEntity {
      * Backward-compatible address getter.
      */
     public String getAddress() {
-        StringBuilder sb = new StringBuilder();
-        if (addressLine1 != null && !addressLine1.isBlank()) sb.append(addressLine1);
-        if (city != null && !city.isBlank()) {
-            if (!sb.isEmpty()) sb.append(", ");
-            sb.append(city);
-        }
-        if (state != null && !state.isBlank()) {
-            if (!sb.isEmpty()) sb.append(", ");
-            sb.append(state);
-        }
-        if (country != null && !country.isBlank()) {
-            if (!sb.isEmpty()) sb.append(", ");
-            sb.append(country);
-        }
-        return sb.isEmpty() ? null : sb.toString();
+        return AddressFormatter.format(addressLine1, city, state, country);
     }
 }

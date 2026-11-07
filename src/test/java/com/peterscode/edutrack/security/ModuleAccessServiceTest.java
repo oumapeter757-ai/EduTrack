@@ -42,7 +42,7 @@ class ModuleAccessServiceTest {
     void effectiveStatusIsRecomputedFromCachedSnapshotOnEveryRequest() {
         School school = school(SubscriptionTier.BASIC, SubscriptionStatus.ACTIVE,
                 LocalDate.of(2026, 1, 15), EnumSet.allOf(ServiceModule.class));
-        when(schools.findById(7L)).thenReturn(Optional.of(school));
+        when(schools.findByIdWithModules(7L)).thenReturn(Optional.of(school));
 
         assertThat(service.entitlements(7L).status()).isEqualTo(SubscriptionStatus.ACTIVE);
         clock.setInstant(Instant.parse("2026-01-16T00:01:00Z"));
@@ -50,7 +50,7 @@ class ModuleAccessServiceTest {
         clock.setInstant(Instant.parse("2026-01-30T00:01:00Z"));
         assertThat(service.entitlements(7L).status()).isEqualTo(SubscriptionStatus.EXPIRED);
 
-        verify(schools, times(1)).findById(7L);
+        verify(schools, times(1)).findByIdWithModules(7L);
     }
 
     @Test
@@ -58,7 +58,7 @@ class ModuleAccessServiceTest {
         School school = school(SubscriptionTier.BASIC, SubscriptionStatus.ACTIVE,
                 LocalDate.of(2026, 1, 15), EnumSet.allOf(ServiceModule.class));
         school.setTimezone("America/Los_Angeles");
-        when(schools.findById(7L)).thenReturn(Optional.of(school));
+        when(schools.findByIdWithModules(7L)).thenReturn(Optional.of(school));
         clock.setInstant(Instant.parse("2026-01-16T00:01:00Z"));
 
         assertThat(service.entitlements(7L).status()).isEqualTo(SubscriptionStatus.ACTIVE);
@@ -68,7 +68,7 @@ class ModuleAccessServiceTest {
     void entitlementsExposeStoredAndEffectiveStatusesSeparately() {
         School school = school(SubscriptionTier.BASIC, SubscriptionStatus.ACTIVE,
                 LocalDate.of(2026, 1, 14), EnumSet.allOf(ServiceModule.class));
-        when(schools.findById(7L)).thenReturn(Optional.of(school));
+        when(schools.findByIdWithModules(7L)).thenReturn(Optional.of(school));
 
         SchoolEntitlements entitlements = service.entitlements(7L);
 
@@ -80,7 +80,7 @@ class ModuleAccessServiceTest {
     void freeTierCannotGainTimetableThroughTamperedEnabledModules() {
         School school = school(SubscriptionTier.FREE, SubscriptionStatus.ACTIVE, null,
                 EnumSet.allOf(ServiceModule.class));
-        when(schools.findById(7L)).thenReturn(Optional.of(school));
+        when(schools.findByIdWithModules(7L)).thenReturn(Optional.of(school));
 
         SchoolEntitlements entitlements = service.entitlements(7L);
 
@@ -94,15 +94,15 @@ class ModuleAccessServiceTest {
                 EnumSet.allOf(ServiceModule.class));
         School basicSchool = school(8L, SubscriptionTier.BASIC, SubscriptionStatus.ACTIVE, null,
                 EnumSet.allOf(ServiceModule.class));
-        when(schools.findById(7L)).thenReturn(Optional.of(freeSchool));
-        when(schools.findById(8L)).thenReturn(Optional.of(basicSchool));
+        when(schools.findByIdWithModules(7L)).thenReturn(Optional.of(freeSchool));
+        when(schools.findByIdWithModules(8L)).thenReturn(Optional.of(basicSchool));
 
         assertThat(service.entitlements(7L).hasModule(ServiceModule.TIMETABLE)).isFalse();
         assertThat(service.entitlements(8L).hasModule(ServiceModule.TIMETABLE)).isTrue();
         assertThat(service.entitlements(7L).hasModule(ServiceModule.TIMETABLE)).isFalse();
 
-        verify(schools, times(1)).findById(7L);
-        verify(schools, times(1)).findById(8L);
+        verify(schools, times(1)).findByIdWithModules(7L);
+        verify(schools, times(1)).findByIdWithModules(8L);
     }
 
     @Test
@@ -111,7 +111,7 @@ class ModuleAccessServiceTest {
                 EnumSet.allOf(ServiceModule.class));
         School basicSchool = school(7L, SubscriptionTier.BASIC, SubscriptionStatus.ACTIVE, null,
                 EnumSet.allOf(ServiceModule.class));
-        when(schools.findById(7L)).thenReturn(Optional.of(freeSchool), Optional.of(basicSchool), Optional.of(freeSchool));
+        when(schools.findByIdWithModules(7L)).thenReturn(Optional.of(freeSchool), Optional.of(basicSchool), Optional.of(freeSchool));
 
         assertThat(service.entitlements(7L).hasModule(ServiceModule.TIMETABLE)).isFalse();
         service.evict(7L);
@@ -124,7 +124,7 @@ class ModuleAccessServiceTest {
     void backgroundAccessFailsClosedAfterSubscriptionGrace() {
         School school = school(SubscriptionTier.BASIC, SubscriptionStatus.ACTIVE,
                 LocalDate.of(2026, 1, 1), EnumSet.allOf(ServiceModule.class));
-        when(schools.findById(7L)).thenReturn(Optional.of(school));
+        when(schools.findByIdWithModules(7L)).thenReturn(Optional.of(school));
         clock.setInstant(Instant.parse("2026-01-16T00:01:00Z"));
 
         assertThatThrownBy(() -> service.assertModuleEnabled(7L, ServiceModule.TIMETABLE))
@@ -134,7 +134,7 @@ class ModuleAccessServiceTest {
 
     @Test
     void missingSchoolFailsClosed() {
-        when(schools.findById(404L)).thenReturn(Optional.empty());
+        when(schools.findByIdWithModules(404L)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.entitlements(404L))
                 .isInstanceOf(ModuleAccessDeniedException.class)

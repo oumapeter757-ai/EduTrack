@@ -16,7 +16,7 @@ public class ModulePromotionWarningService implements PromotionWarningService {
 
     @Override
     public WarningFlags warnings(Long schoolId, Long studentId) {
-        var school = schools.findById(schoolId).orElseThrow();
+        var school = schools.findByIdWithModules(schoolId).orElseThrow();
         boolean fees = school.getEnabledModules().contains(ServiceModule.BILLING)
                 && feeAccounts.findBySchoolIdAndStudentId(schoolId, studentId)
                 .map(a -> a.getCachedBalance() != null && a.getCachedBalance().signum() > 0).orElse(false);

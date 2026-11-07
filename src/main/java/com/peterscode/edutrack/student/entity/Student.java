@@ -1,5 +1,6 @@
 package com.peterscode.edutrack.student.entity;
 
+import com.peterscode.edutrack.shared.AddressFormatter;
 import com.peterscode.edutrack.shared.BaseEntity;
 import com.peterscode.edutrack.student.enums.BloodGroup;
 import com.peterscode.edutrack.student.enums.Gender;
@@ -177,21 +178,7 @@ public class Student extends BaseEntity {
      * Backward-compatible address getter.
      */
     public String getAddress() {
-        StringBuilder sb = new StringBuilder();
-        if (addressLine1 != null && !addressLine1.isBlank()) sb.append(addressLine1);
-        if (city != null && !city.isBlank()) {
-            if (!sb.isEmpty()) sb.append(", ");
-            sb.append(city);
-        }
-        if (state != null && !state.isBlank()) {
-            if (!sb.isEmpty()) sb.append(", ");
-            sb.append(state);
-        }
-        if (country != null && !country.isBlank()) {
-            if (!sb.isEmpty()) sb.append(", ");
-            sb.append(country);
-        }
-        return sb.isEmpty() ? null : sb.toString();
+        return AddressFormatter.format(addressLine1, city, state, country);
     }
 
     /**

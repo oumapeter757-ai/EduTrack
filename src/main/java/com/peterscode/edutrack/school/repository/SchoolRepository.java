@@ -35,4 +35,13 @@ public interface SchoolRepository extends JpaRepository<School, Long>, JpaSpecif
     long countBySubscriptionTier(SubscriptionTier tier);
 
     long countByActive(boolean active);
+
+    /**
+     * Fetch a school with its enabled modules eagerly joined.
+     * Use this when you need {@code enabledModules} to avoid the N+1 query
+     * caused by {@code FetchType.LAZY} on the collection.
+     */
+    @org.springframework.data.jpa.repository.Query(
+            "SELECT DISTINCT s FROM School s LEFT JOIN FETCH s.enabledModules WHERE s.id = :id")
+    Optional<School> findByIdWithModules(@org.springframework.data.repository.query.Param("id") Long id);
 }

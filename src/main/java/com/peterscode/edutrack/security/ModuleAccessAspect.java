@@ -176,6 +176,11 @@ public class ModuleAccessAspect {
     }
 
     private Long bodySchoolId(Object argument) {
+        // Prefer the type-safe SchoolScoped marker interface
+        if (argument instanceof SchoolScoped schoolScoped) {
+            return schoolScoped.getSchoolId();
+        }
+        // Fallback: reflection for DTOs that have not been updated yet
         for (String accessorName : List.of("schoolId", "getSchoolId")) {
             try {
                 Method accessor = argument.getClass().getMethod(accessorName);

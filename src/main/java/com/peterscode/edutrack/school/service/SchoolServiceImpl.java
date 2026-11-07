@@ -245,7 +245,7 @@ public class SchoolServiceImpl implements SchoolService {
     @Transactional(readOnly = true)
     @Override
     public SchoolResponseDto getSchoolById(Long id, UserPrincipal principal) {
-        School school = schoolRepository.findById(id)
+        School school = schoolRepository.findByIdWithModules(id)
                 .orElseThrow(() -> new SchoolNotFoundException(id));
         if (principal.getRole() != Role.SUPER_ADMIN
                 && !id.equals(principal.getSchoolId())) {
@@ -338,7 +338,7 @@ public class SchoolServiceImpl implements SchoolService {
         SchoolProfileCacheDto cached = getCachedSchoolProfile(schoolId);
         // Enrich with phone/email from the database on every request so the client
         // always receives the full SchoolResponseDto, but the cache never holds P3 data.
-        School school = schoolRepository.findById(schoolId)
+        School school = schoolRepository.findByIdWithModules(schoolId)
                 .orElseThrow(() -> new SchoolNotFoundException(schoolId));
         SchoolResponseDto dto = schoolMapper.toDto(school);
         // Copy subscription fields from the cache snapshot so the effective state
@@ -356,7 +356,7 @@ public class SchoolServiceImpl implements SchoolService {
     @Transactional(readOnly = true)
     @Cacheable(value = "school-profile", key = "#schoolId", unless = "#result == null")
     public SchoolProfileCacheDto getCachedSchoolProfile(Long schoolId) {
-        return schoolRepository.findById(schoolId)
+        return schoolRepository.findByIdWithModules(schoolId)
                 .map(schoolMapper::toCacheDto)
                 .orElseThrow(() -> new SchoolNotFoundException(schoolId));
     }

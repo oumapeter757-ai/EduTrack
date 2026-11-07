@@ -70,6 +70,7 @@ public class AuthRateLimiter {
 
     public void checkSignup(String email) {
         checkKey(signupAttempts, "signup-ip:" + clientIp(), signupIpMaxAttempts, signupWindowSeconds);
+        checkKey(signupAttempts, "signup-email:" + normalize(email), signupIpMaxAttempts, signupWindowSeconds);
     }
 
     public void checkPublicLookup() {
@@ -80,6 +81,7 @@ public class AuthRateLimiter {
 
     public void failure(String email) {
         increment(signupAttempts, "signup-ip:" + clientIp());
+        increment(signupAttempts, "signup-email:" + normalize(email));
         try {
             Thread.sleep(25L);
         } catch (InterruptedException interrupted) {
@@ -91,6 +93,7 @@ public class AuthRateLimiter {
         attempts.invalidate("ip:" + clientIp());
         attempts.invalidate("email:" + normalize(email));
         signupAttempts.invalidate("signup-ip:" + clientIp());
+        signupAttempts.invalidate("signup-email:" + normalize(email));
     }
 
     @EventListener
