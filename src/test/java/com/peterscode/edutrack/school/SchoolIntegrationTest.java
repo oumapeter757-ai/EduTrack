@@ -203,7 +203,7 @@ class SchoolIntegrationTest {
                         .with(user(schoolAdminPrincipal2))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(profileDto)))
-                .andExpect(status().isNotFound());
+                .andExpect(status().isForbidden());
     }
 
     @Test

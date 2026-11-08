@@ -4,7 +4,6 @@ import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.web.multipart.MultipartResolver;
 import org.springframework.web.multipart.support.StandardServletMultipartResolver;
 
@@ -14,7 +13,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 
 @Configuration
-@EnableScheduling
 public class StorageConfig {
 
     @Value("${edutrack.storage.base-path:}")
