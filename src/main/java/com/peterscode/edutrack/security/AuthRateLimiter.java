@@ -107,6 +107,12 @@ public class AuthRateLimiter {
     @EventListener
     public void onAuthenticationSuccess(AuthenticationSuccessEvent event) {
         Authentication authentication = event.getAuthentication();
+        // Clear the password hash from the principal after successful authentication.
+        // The password is only needed for DaoAuthenticationProvider comparison;
+        // clearing it prevents the hash from persisting in memory during the request.
+        if (authentication.getPrincipal() instanceof UserPrincipal principal) {
+            principal.clearPassword();
+        }
         success(authentication.getName());
     }
 

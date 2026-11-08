@@ -46,6 +46,8 @@ public class  UserPrincipal implements UserDetails {
 
     /**
      * Factory method to build UserPrincipal directly from your User domain entity.
+     * The password hash is retained only for DaoAuthenticationProvider comparison.
+     * It is cleared after successful authentication via the AuthenticationSuccessEvent listener.
      */
     public static UserPrincipal create(User user) {
         // Enforce Spring Security authority convention: "ROLE_SUPER_ADMIN", "ROLE_SCHOOL_ADMIN", etc.
@@ -53,8 +55,6 @@ public class  UserPrincipal implements UserDetails {
                 new SimpleGrantedAuthority("ROLE_" + user.getRole().name())
         );
 
-        // Store the password hash only for DaoAuthenticationProvider comparison.
-        // The hash is cleared after authentication via the private constructor.
         return UserPrincipal.builder()
                 .id(user.getId())
                 .email(user.getEmail())
