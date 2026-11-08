@@ -21,10 +21,10 @@ class RoleTest {
     }
 
     @Test
-    @DisplayName("SCHOOL_ADMIN can create TEACHER, STUDENT, PARENT, LIBRARIAN")
+    @DisplayName("SCHOOL_ADMIN can create TEACHER, STUDENT, PARENT, LIBRARIAN, ACCOUNTANT")
     void schoolAdminCanCreateSchoolUsers() {
         assertThat(Role.creatableBy(Role.SCHOOL_ADMIN))
-                .containsExactlyInAnyOrder(Role.TEACHER, Role.STUDENT, Role.PARENT, Role.LIBRARIAN);
+                .containsExactlyInAnyOrder(Role.TEACHER, Role.STUDENT, Role.PARENT, Role.LIBRARIAN, Role.ACCOUNTANT);
 
         assertThat(Role.canCreate(Role.SCHOOL_ADMIN, Role.SUPER_ADMIN)).isFalse();
         assertThat(Role.canCreate(Role.SCHOOL_ADMIN, Role.SCHOOL_ADMIN)).isFalse();
@@ -34,10 +34,12 @@ class RoleTest {
     }
 
     @Test
-    @DisplayName("TEACHER, STUDENT, PARENT cannot create any roles")
+    @DisplayName("TEACHER, STUDENT, PARENT, LIBRARIAN, ACCOUNTANT cannot create any roles")
     void endUsersCannotCreateAnyRole() {
         assertThat(Role.creatableBy(Role.TEACHER)).isEmpty();
         assertThat(Role.creatableBy(Role.STUDENT)).isEmpty();
         assertThat(Role.creatableBy(Role.PARENT)).isEmpty();
+        assertThat(Role.creatableBy(Role.LIBRARIAN)).isEmpty();
+        assertThat(Role.creatableBy(Role.ACCOUNTANT)).isEmpty();
     }
 }

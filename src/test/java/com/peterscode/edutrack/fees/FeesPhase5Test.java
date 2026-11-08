@@ -450,8 +450,10 @@ class FeesPhase5Test {
         @Test
         @DisplayName("Timeout job skips when no stale payments")
         void skipsWhenNoStalePayments() {
-            when(feePaymentRepository.claimStalePayments(
-                    any(FeePaymentStatus.class), any(LocalDateTime.class), any(LocalDateTime.class))).thenReturn(List.of());
+            when(feePaymentRepository.claimStalePaymentsAtomically(
+                    anyString(), any(LocalDateTime.class), any(LocalDateTime.class),
+                    anyString(), any(LocalDateTime.class), anyInt())).thenReturn(0);
+            when(feePaymentRepository.findClaimedByRunner(anyString(), any(LocalDateTime.class))).thenReturn(List.of());
             when(feePaymentRepository.returnExpiredClaims(any(LocalDateTime.class), any(FeePaymentStatus.class))).thenReturn(0);
 
             job.processStalePayments();
@@ -463,8 +465,10 @@ class FeesPhase5Test {
         @DisplayName("Timeout job returns expired claims")
         void returnsExpiredClaims() {
             when(feePaymentRepository.returnExpiredClaims(any(LocalDateTime.class), any(FeePaymentStatus.class))).thenReturn(3);
-            when(feePaymentRepository.claimStalePayments(
-                    any(FeePaymentStatus.class), any(LocalDateTime.class), any(LocalDateTime.class))).thenReturn(List.of());
+            when(feePaymentRepository.claimStalePaymentsAtomically(
+                    anyString(), any(LocalDateTime.class), any(LocalDateTime.class),
+                    anyString(), any(LocalDateTime.class), anyInt())).thenReturn(0);
+            when(feePaymentRepository.findClaimedByRunner(anyString(), any(LocalDateTime.class))).thenReturn(List.of());
 
             job.processStalePayments();
 
@@ -479,15 +483,19 @@ class FeesPhase5Test {
                     .status(FeePaymentStatus.PENDING)
                     .checkoutRequestID(null)
                     .build();
-            when(feePaymentRepository.claimStalePayments(
-                    any(FeePaymentStatus.class), any(LocalDateTime.class), any(LocalDateTime.class))).thenReturn(List.of(payment));
+            when(feePaymentRepository.claimStalePaymentsAtomically(
+                    anyString(), any(LocalDateTime.class), any(LocalDateTime.class),
+                    anyString(), any(LocalDateTime.class), anyInt())).thenReturn(1);
+            when(feePaymentRepository.findClaimedByRunner(anyString(), any(LocalDateTime.class))).thenReturn(List.of(payment));
             when(feePaymentRepository.returnExpiredClaims(any(LocalDateTime.class), any(FeePaymentStatus.class))).thenReturn(0);
+            when(feePaymentRepository.findById(1L)).thenReturn(java.util.Optional.of(payment));
 
             job.processStalePayments();
 
-            // Verify the job used SKIP LOCKED claiming
-            verify(feePaymentRepository).claimStalePayments(
-                    eq(FeePaymentStatus.PENDING), any(LocalDateTime.class), any(LocalDateTime.class));
+            // Verify the job used atomic claiming with SKIP LOCKED
+            verify(feePaymentRepository).claimStalePaymentsAtomically(
+                    eq("PENDING"), any(LocalDateTime.class), any(LocalDateTime.class),
+                    anyString(), any(LocalDateTime.class), anyInt());
         }
     }
 

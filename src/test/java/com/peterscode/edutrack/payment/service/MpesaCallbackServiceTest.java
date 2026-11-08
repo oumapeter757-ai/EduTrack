@@ -100,7 +100,7 @@ class MpesaCallbackServiceTest {
     @Test
     @DisplayName("handleValidation accepts when invoice found and amount matches")
     void handleValidation_validInvoice_accepts() {
-        when(paymentInvoiceRepository.findByInvoiceNumber(pendingInvoice.getInvoiceNumber()))
+        when(paymentInvoiceRepository.findByInvoiceNumberForUpdate(pendingInvoice.getInvoiceNumber()))
                 .thenReturn(Optional.of(pendingInvoice));
 
         MpesaCallbackRequest callback = buildCallback(
@@ -121,7 +121,7 @@ class MpesaCallbackServiceTest {
     @Test
     @DisplayName("handleValidation rejects when invoice not found")
     void handleValidation_invoiceNotFound_rejects() {
-        when(paymentInvoiceRepository.findByInvoiceNumber(anyString()))
+        when(paymentInvoiceRepository.findByInvoiceNumberForUpdate(anyString()))
                 .thenReturn(Optional.empty());
 
         MpesaCallbackRequest callback = buildCallback(
@@ -139,7 +139,7 @@ class MpesaCallbackServiceTest {
     @Test
     @DisplayName("handleValidation rejects when amount mismatch")
     void handleValidation_amountMismatch_rejects() {
-        when(paymentInvoiceRepository.findByInvoiceNumber(pendingInvoice.getInvoiceNumber()))
+        when(paymentInvoiceRepository.findByInvoiceNumberForUpdate(pendingInvoice.getInvoiceNumber()))
                 .thenReturn(Optional.of(pendingInvoice));
 
         MpesaCallbackRequest callback = buildCallback(
@@ -173,7 +173,7 @@ class MpesaCallbackServiceTest {
     @DisplayName("handleValidation accepts when invoice already processed")
     void handleValidation_alreadyProcessed_accepts() {
         pendingInvoice.setStatus(PaymentInvoiceStatus.VALIDATED);
-        when(paymentInvoiceRepository.findByInvoiceNumber(pendingInvoice.getInvoiceNumber()))
+        when(paymentInvoiceRepository.findByInvoiceNumberForUpdate(pendingInvoice.getInvoiceNumber()))
                 .thenReturn(Optional.of(pendingInvoice));
 
         MpesaCallbackRequest callback = buildCallback(
@@ -193,7 +193,7 @@ class MpesaCallbackServiceTest {
     @Test
     @DisplayName("handleConfirmation confirms payment and triggers subscription activation")
     void handleConfirmation_validConfirmation_confirms() {
-        when(paymentInvoiceRepository.findByInvoiceNumber(pendingInvoice.getInvoiceNumber()))
+        when(paymentInvoiceRepository.findByInvoiceNumberForUpdate(pendingInvoice.getInvoiceNumber()))
                 .thenReturn(Optional.of(pendingInvoice));
         doNothing().when(schoolService).activateSubscriptionByPayment(anyLong());
 
@@ -218,7 +218,7 @@ class MpesaCallbackServiceTest {
     void handleConfirmation_alreadyConfirmed_skips() {
         pendingInvoice.setStatus(PaymentInvoiceStatus.CONFIRMED);
         pendingInvoice.setMpesaTransactionId("SLM1234567");
-        when(paymentInvoiceRepository.findByInvoiceNumber(pendingInvoice.getInvoiceNumber()))
+        when(paymentInvoiceRepository.findByInvoiceNumberForUpdate(pendingInvoice.getInvoiceNumber()))
                 .thenReturn(Optional.of(pendingInvoice));
 
         MpesaCallbackRequest callback = buildCallback(
@@ -237,7 +237,7 @@ class MpesaCallbackServiceTest {
     @Test
     @DisplayName("handleConfirmation handles failed payment (ResultCode != 0)")
     void handleConfirmation_failedPayment_marksFailed() {
-        when(paymentInvoiceRepository.findByInvoiceNumber(pendingInvoice.getInvoiceNumber()))
+        when(paymentInvoiceRepository.findByInvoiceNumberForUpdate(pendingInvoice.getInvoiceNumber()))
                 .thenReturn(Optional.of(pendingInvoice));
 
         MpesaCallbackRequest callback = buildCallback(
@@ -256,7 +256,7 @@ class MpesaCallbackServiceTest {
     @Test
     @DisplayName("handleConfirmation handles missing invoice gracefully")
     void handleConfirmation_invoiceNotFound_noError() {
-        when(paymentInvoiceRepository.findByInvoiceNumber(anyString()))
+        when(paymentInvoiceRepository.findByInvoiceNumberForUpdate(anyString()))
                 .thenReturn(Optional.empty());
 
         MpesaCallbackRequest callback = buildCallback(
@@ -274,7 +274,7 @@ class MpesaCallbackServiceTest {
     @Test
     @DisplayName("handleConfirmation logs failure when subscription activation throws")
     void handleConfirmation_activationFailure_logsError() {
-        when(paymentInvoiceRepository.findByInvoiceNumber(pendingInvoice.getInvoiceNumber()))
+        when(paymentInvoiceRepository.findByInvoiceNumberForUpdate(pendingInvoice.getInvoiceNumber()))
                 .thenReturn(Optional.of(pendingInvoice));
         doThrow(new RuntimeException("DB connection failed"))
                 .when(schoolService).activateSubscriptionByPayment(anyLong());

@@ -41,9 +41,15 @@ class MpesaWebhookControllerTest {
     private MpesaCallbackRequest validationCallback;
     private MpesaCallbackRequest confirmationCallback;
 
+    private static final String TEST_WEBHOOK_TOKEN = "test-webhook-token-1234567890abcdef";
+
     @BeforeEach
-    void setUp() {
+    void setUp() throws Exception {
         mockMvc = MockMvcBuilders.standaloneSetup(controller).build();
+        // Set the webhook token on the controller (32+ chars required)
+        java.lang.reflect.Field tokenField = controller.getClass().getDeclaredField("webhookToken");
+        tokenField.setAccessible(true);
+        tokenField.set(controller, TEST_WEBHOOK_TOKEN);
         validationCallback = buildCallback("EDU-TEST-20250101120000", new BigDecimal("5000.00"), null, 0, "Success");
         confirmationCallback = buildCallback("EDU-TEST-20250101120000", new BigDecimal("5000.00"), "SLM1234567", 0, "Success");
     }
@@ -81,6 +87,7 @@ class MpesaWebhookControllerTest {
         when(mpesaCallbackService.handleValidation(any())).thenReturn(response);
 
         mockMvc.perform(post("/api/v1/payments/callback/validation")
+                        .param("token", TEST_WEBHOOK_TOKEN)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(validationCallback)))
                 .andExpect(status().isOk())
@@ -97,6 +104,7 @@ class MpesaWebhookControllerTest {
         when(mpesaCallbackService.handleValidation(any())).thenReturn(response);
 
         mockMvc.perform(post("/api/v1/payments/callback/validation")
+                        .param("token", TEST_WEBHOOK_TOKEN)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(validationCallback)))
                 .andExpect(status().isOk())
@@ -112,6 +120,7 @@ class MpesaWebhookControllerTest {
         when(mpesaCallbackService.handleConfirmation(any())).thenReturn(confirmationCallback);
 
         mockMvc.perform(post("/api/v1/payments/callback/confirmation")
+                        .param("token", TEST_WEBHOOK_TOKEN)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(confirmationCallback)))
                 .andExpect(status().isOk());
@@ -128,6 +137,7 @@ class MpesaWebhookControllerTest {
         String jsonPayload = objectMapper.writeValueAsString(confirmationCallback);
 
         mockMvc.perform(post("/api/v1/payments/callback/confirmation")
+                        .param("token", TEST_WEBHOOK_TOKEN)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(jsonPayload))
                 .andExpect(status().isOk())
@@ -145,6 +155,7 @@ class MpesaWebhookControllerTest {
         when(mpesaCallbackService.handleConfirmation(any())).thenReturn(failedCallback);
 
         mockMvc.perform(post("/api/v1/payments/callback/confirmation")
+                        .param("token", TEST_WEBHOOK_TOKEN)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(failedCallback)))
                 .andExpect(status().isOk());
