@@ -23,7 +23,7 @@ public interface FileStorageService {
     StoredFile head(Long fileId);
 
     /**
-     * Delete a file (marks as DELETED in DB and removes from disk).
+     * Mark a file as deleted; physical content is removed by the cleanup job.
      */
     void delete(Long fileId);
 

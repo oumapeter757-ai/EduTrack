@@ -1,0 +1,15 @@
+{
+  "role": {
+    "name": "edutrack-api"
+  },
+  "sampling": {
+    "percentage": 10
+  },
+  "instrumentation": {
+    "jdbc": {
+      "masking": {
+        "enabled": true
+      }
+    }
+  }
+}

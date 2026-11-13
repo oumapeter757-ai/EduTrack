@@ -11,9 +11,6 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -29,7 +26,7 @@ import java.util.UUID;
  * 1. Return expired claims back to the queue
  * 2. Claim bounded batch with PESSIMISTIC_WRITE + SKIP LOCKED
  * 3. Mark claimed rows with lease
- * 4. Delete files from disk OUTSIDE transaction
+ * 4. Delete content from the configured storage backend OUTSIDE transaction
  * 5. Delete DB rows in small batches
  * </p>
  */
@@ -39,9 +36,7 @@ import java.util.UUID;
 public class LmsFileCleanupJob {
 
     private final StoredFileRepository storedFileRepository;
-
-    @Value("${edutrack.storage.base-path}")
-    private String basePath;
+    private final FileContentStore contentStore;
 
     @Value("${edutrack.storage.cleanup-grace-hours:24}")
     private int cleanupGraceHours;
@@ -85,14 +80,12 @@ public class LmsFileCleanupJob {
 
         log.info("LMS cleanup: claimed {} files for deletion", claimed.size());
 
-        // Delete files from disk OUTSIDE any DB transaction
+        // Delete file content outside any DB transaction
         List<Long> deletedIds = new java.util.ArrayList<>();
         int cleaned = 0;
         for (StoredFile file : claimed) {
             try {
-                String relativePath = file.getSchoolId() + "/" + file.getStorageKey();
-                Path filePath = Paths.get(basePath, relativePath);
-                Files.deleteIfExists(filePath);
+                contentStore.delete(file.getSchoolId() + "/" + file.getStorageKey());
                 deletedIds.add(file.getId());
                 cleaned++;
             } catch (IOException e) {
