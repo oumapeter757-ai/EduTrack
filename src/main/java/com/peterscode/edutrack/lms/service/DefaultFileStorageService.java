@@ -8,33 +8,31 @@ import com.peterscode.edutrack.lms.entity.StoredFile;
 import com.peterscode.edutrack.lms.exception.LmsRuleException;
 import com.peterscode.edutrack.lms.repository.SchoolStorageUsageRepository;
 import com.peterscode.edutrack.lms.repository.StoredFileRepository;
+import com.peterscode.edutrack.lms.storage.FileContentStore;
 import com.peterscode.edutrack.lms.storage.FileScanner;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.core.io.FileSystemResource;
-import org.springframework.core.io.Resource;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.*;
-import java.nio.file.*;
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.security.MessageDigest;
 import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
-public class LocalFileStorageService implements FileStorageService {
+public class DefaultFileStorageService implements FileStorageService {
 
     private final StoredFileRepository storedFileRepository;
     private final SchoolStorageUsageRepository storageUsageRepository;
     private final LmsAuditService auditService;
     private final FileScanner fileScanner;
-
-    @Value("${edutrack.storage.base-path}")
-    private String basePath;
+    private final FileContentStore contentStore;
 
     @Value("${edutrack.storage.max-file-size:10485760}")
     private long maxFileSize;
@@ -44,9 +42,6 @@ public class LocalFileStorageService implements FileStorageService {
 
     @Value("${edutrack.storage.allowed-extensions:pdf,doc,docx,ppt,pptx,xls,xlsx,txt,png,jpg,jpeg}")
     private String allowedExtensionsStr;
-
-    @Value("${edutrack.storage.min-free-bytes:104857600}")
-    private long minFreeBytes;
 
     private List<String> allowedExtensions;
 
@@ -130,13 +125,6 @@ public class LocalFileStorageService implements FileStorageService {
                     "File size exceeds maximum allowed size of " + maxFileSize + " bytes");
         }
 
-        // Check disk space
-        File base = new File(basePath);
-        if (base.exists() && file.getSize() > base.getFreeSpace() - minFreeBytes) {
-            throw new LmsRuleException("INSUFFICIENT_DISK_SPACE", HttpStatus.INTERNAL_SERVER_ERROR,
-                    "Insufficient disk space for upload");
-        }
-
         // Validate content type by magic numbers
         String expectedContentType = EXTENSION_TO_CONTENT_TYPE.get(extension.toLowerCase());
         if (expectedContentType == null) {
@@ -144,12 +132,13 @@ public class LocalFileStorageService implements FileStorageService {
                     "Content type for extension '" + extension + "' is not recognized");
         }
 
+        byte[] content;
         try {
-            byte[] firstBytes = file.getBytes();
-            if (firstBytes.length == 0) {
+            content = file.getBytes();
+            if (content.length == 0) {
                 throw new LmsRuleException("EMPTY_FILE", HttpStatus.BAD_REQUEST, "File must not be empty");
             }
-            validateMagicNumbers(firstBytes, expectedContentType);
+            validateMagicNumbers(content, expectedContentType);
         } catch (IOException e) {
             throw new LmsRuleException("FILE_READ_ERROR", HttpStatus.INTERNAL_SERVER_ERROR,
                     "Failed to read file content");
@@ -172,51 +161,32 @@ public class LocalFileStorageService implements FileStorageService {
 
         // Generate storage key
         String storageKey = UUID.randomUUID().toString();
-        String relativePath = schoolId + "/" + storageKey;
-        Path targetPath = Paths.get(basePath, relativePath);
-
-        // Ensure directory exists
-        try {
-            Files.createDirectories(targetPath.getParent());
-        } catch (IOException e) {
-            throw new LmsRuleException("STORAGE_ERROR", HttpStatus.INTERNAL_SERVER_ERROR,
-                    "Failed to create storage directory");
-        }
-
-        // Write file
-        try {
-            file.transferTo(targetPath.toFile());
-        } catch (IOException e) {
-            throw new LmsRuleException("STORAGE_ERROR", HttpStatus.INTERNAL_SERVER_ERROR,
-                    "Failed to save file");
-        }
+        String storageKeyPath = schoolId + "/" + storageKey;
 
         // Compute SHA-256
         String sha256;
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            try (InputStream is = Files.newInputStream(targetPath)) {
-                byte[] hash = digest.digest(is.readAllBytes());
-                sha256 = bytesToHex(hash);
-            }
+            sha256 = bytesToHex(digest.digest(content));
         } catch (Exception e) {
-            // Clean up file on error
-            try {
-                Files.deleteIfExists(targetPath);
-            } catch (IOException ignored) {}
             throw new LmsRuleException("CHECKSUM_ERROR", HttpStatus.INTERNAL_SERVER_ERROR,
                     "Failed to compute file checksum");
         }
 
         // Scan file
         String scanStatusStr = ScanStatus.UNSCANNED.name();
-        try {
-            try (InputStream is = Files.newInputStream(targetPath)) {
-                scanStatusStr = fileScanner.scan(is);
-            }
+        try (InputStream is = new ByteArrayInputStream(content)) {
+            scanStatusStr = fileScanner.scan(is);
         } catch (Exception e) {
             // If scanner fails, keep UNSCANNED
             scanStatusStr = ScanStatus.UNSCANNED.name();
+        }
+
+        try {
+            contentStore.write(storageKeyPath, content, expectedContentType);
+        } catch (IOException e) {
+            throw new LmsRuleException("STORAGE_ERROR", HttpStatus.INTERNAL_SERVER_ERROR,
+                    "Failed to save file");
         }
 
         // Create stored file record
@@ -264,16 +234,10 @@ public class LocalFileStorageService implements FileStorageService {
                     "File has been rejected by security scan");
         }
 
-        String relativePath = storedFile.getSchoolId() + "/" + storedFile.getStorageKey();
-        Path filePath = Paths.get(basePath, relativePath);
-
-        if (!Files.exists(filePath)) {
-            throw new LmsRuleException("FILE_NOT_FOUND", HttpStatus.NOT_FOUND,
-                    "File not found on disk");
-        }
-
         try {
-            return Files.newInputStream(filePath);
+            return contentStore.open(storedFile.getSchoolId() + "/" + storedFile.getStorageKey())
+                    .orElseThrow(() -> new LmsRuleException("FILE_NOT_FOUND", HttpStatus.NOT_FOUND,
+                            "File not found in storage"));
         } catch (IOException e) {
             throw new LmsRuleException("FILE_READ_ERROR", HttpStatus.INTERNAL_SERVER_ERROR,
                     "Failed to read file");

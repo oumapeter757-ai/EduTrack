@@ -1,20 +1,19 @@
 package com.peterscode.edutrack.config;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.core.env.Environment;
 
 import java.util.List;
 
+@Slf4j
 @Configuration
 public class CorsConfig {
-    private static final Logger log = LoggerFactory.getLogger(CorsConfig.class);
 
     @Value("${edutrack.cors.allowed-origins:http://localhost:3000,http://localhost:5173}")
     private String allowedOrigins;

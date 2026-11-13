@@ -133,7 +133,12 @@ edutrack:
       public-lookup-max-attempts: ${EDUTRACK_AUTH_RATE_LIMIT_PUBLIC_LOOKUP_MAX_ATTEMPTS:30}
       trusted-proxy: ${EDUTRACK_AUTH_RATE_LIMIT_TRUSTED_PROXY:false}
   storage:
-    base-path: ${EDUTRACK_STORAGE_PATH}
+    base-path: ${EDUTRACK_STORAGE_PATH:}
+    provider: ${EDUTRACK_STORAGE_PROVIDER:local}
+    azure:
+      endpoint: ${AZURE_STORAGE_BLOB_ENDPOINT:}
+      container: ${EDUTRACK_STORAGE_BLOB_CONTAINER:edutrack-files}
+      sas-token: ${AZURE_STORAGE_BLOB_SAS_TOKEN:}
     max-file-size: ${EDUTRACK_STORAGE_MAX_FILE_SIZE:10485760}
     school-quota-bytes: ${EDUTRACK_STORAGE_SCHOOL_QUOTA_BYTES:1073741824}
     allowed-extensions: ${EDUTRACK_STORAGE_ALLOWED_EXTENSIONS:pdf,doc,docx,ppt,pptx,xls,xlsx,txt,png,jpg,jpeg}

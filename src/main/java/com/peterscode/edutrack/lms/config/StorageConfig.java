@@ -2,6 +2,7 @@ package com.peterscode.edutrack.lms.config;
 
 import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.multipart.MultipartResolver;
@@ -13,6 +14,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 
 @Configuration
+@ConditionalOnProperty(prefix = "edutrack.storage", name = "provider", havingValue = "local", matchIfMissing = true)
 public class StorageConfig {
 
     @Value("${edutrack.storage.base-path:}")
