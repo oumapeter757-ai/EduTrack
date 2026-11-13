@@ -13,7 +13,11 @@ import org.springframework.security.authentication.event.AuthenticationSuccessEv
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.Duration;
+import java.util.HexFormat;
 import java.util.Locale;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -22,10 +26,12 @@ public class AuthRateLimiter {
     private final Cache<String, Attempt> attempts;
     private final Cache<String, Attempt> signupAttempts;
     private final Cache<String, Attempt> publicLookupAttempts;
+    private final Cache<String, Attempt> passwordResetAttempts;
     private final int loginEmailMaxFailures;
     private final int loginIpMaxFailures;
     private final int signupIpMaxAttempts;
     private final int publicLookupMaxAttempts;
+    private final int passwordResetMaxAttempts;
     private final long windowSeconds;
     private final long signupWindowSeconds;
     private final boolean trustedProxy;
@@ -37,6 +43,7 @@ public class AuthRateLimiter {
             @Value("${edutrack.auth.rate-limit.window-seconds:900}") long windowSeconds,
             @Value("${edutrack.auth.rate-limit.signup-window-seconds:3600}") long signupWindowSeconds,
             @Value("${edutrack.auth.rate-limit.public-lookup-max-attempts:30}") int publicLookupMaxAttempts,
+            @Value("${edutrack.auth.rate-limit.password-reset-max-attempts:5}") int passwordResetMaxAttempts,
             @Value("${edutrack.auth.rate-limit.trusted-proxy:false}") boolean trustedProxy) {
         this.loginEmailMaxFailures = loginEmailMaxFailures;
         this.loginIpMaxFailures = loginIpMaxFailures;
@@ -56,7 +63,12 @@ public class AuthRateLimiter {
                 .expireAfterWrite(Duration.ofSeconds(windowSeconds))
                 .maximumSize(100_000)
                 .build();
+        this.passwordResetAttempts = Caffeine.newBuilder()
+                .expireAfterWrite(Duration.ofSeconds(windowSeconds))
+                .maximumSize(100_000)
+                .build();
         this.publicLookupMaxAttempts = publicLookupMaxAttempts;
+        this.passwordResetMaxAttempts = passwordResetMaxAttempts;
     }
 
     public void check(String email) {
@@ -77,6 +89,15 @@ public class AuthRateLimiter {
         String key = "public-ip:" + clientIp();
         checkKey(publicLookupAttempts, key, publicLookupMaxAttempts, windowSeconds);
         increment(publicLookupAttempts, key);
+    }
+
+    public void checkPasswordReset(String email) {
+        String ipKey = "password-reset-ip:" + clientIp();
+        String emailKey = "password-reset-email:" + hashEmail(normalize(email));
+        checkKey(passwordResetAttempts, ipKey, passwordResetMaxAttempts, windowSeconds);
+        checkKey(passwordResetAttempts, emailKey, passwordResetMaxAttempts, windowSeconds);
+        increment(passwordResetAttempts, ipKey);
+        increment(passwordResetAttempts, emailKey);
     }
 
     public void failure(String email) {
@@ -157,6 +178,15 @@ public class AuthRateLimiter {
 
     private static String normalize(String email) {
         return email == null ? "" : email.trim().toLowerCase(Locale.ROOT);
+    }
+
+    private static String hashEmail(String email) {
+        try {
+            return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256")
+                    .digest(email.getBytes(StandardCharsets.UTF_8)));
+        } catch (NoSuchAlgorithmException impossible) {
+            throw new IllegalStateException("SHA-256 is unavailable", impossible);
+        }
     }
 
     private record Attempt(AtomicInteger count) {}

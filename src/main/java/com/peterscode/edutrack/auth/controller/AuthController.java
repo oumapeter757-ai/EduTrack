@@ -1,11 +1,16 @@
 package com.peterscode.edutrack.auth.controller;
 
 import com.peterscode.edutrack.auth.dto.AuthResponseDto;
+import com.peterscode.edutrack.auth.dto.ChangePasswordRequest;
+import com.peterscode.edutrack.auth.dto.ForgotPasswordRequest;
 import com.peterscode.edutrack.auth.dto.LoginRequestDto;
 import com.peterscode.edutrack.auth.dto.RefreshTokenRequest;
 import com.peterscode.edutrack.auth.dto.LogoutRequest;
+import com.peterscode.edutrack.auth.dto.ResetPasswordRequest;
 import com.peterscode.edutrack.auth.service.AuthService;
+import com.peterscode.edutrack.auth.service.PasswordManagementService;
 import com.peterscode.edutrack.shared.response.ApiResponse;
+import com.peterscode.edutrack.security.UserPrincipal;
 import com.peterscode.edutrack.user.dto.CreateSuperAdminRequestDto;
 import com.peterscode.edutrack.user.dto.UserResponseDto;
 import com.peterscode.edutrack.user.service.UserRegistrationService;
@@ -14,6 +19,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import com.peterscode.edutrack.security.NoModuleRequired;
 
@@ -31,6 +37,7 @@ import com.peterscode.edutrack.security.NoModuleRequired;
 public class AuthController {
 
     private final AuthService authService;
+    private final PasswordManagementService passwordManagementService;
     private final UserRegistrationService registrationService;
 
     @PostMapping("/login")
@@ -53,6 +60,32 @@ public class AuthController {
     public ResponseEntity<Void> logout(@Valid @RequestBody LogoutRequest request) {
         authService.logout(request.refreshToken());
         return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/forgot-password")
+    @PreAuthorize("permitAll()")
+    public ResponseEntity<ApiResponse<Void>> forgotPassword(
+            @Valid @RequestBody ForgotPasswordRequest request) {
+        String message = passwordManagementService.requestPasswordReset(request.email());
+        return ResponseEntity.ok(ApiResponse.success(message));
+    }
+
+    @PostMapping("/reset-password")
+    @PreAuthorize("permitAll()")
+    public ResponseEntity<ApiResponse<Void>> resetPassword(
+            @Valid @RequestBody ResetPasswordRequest request) {
+        passwordManagementService.resetPassword(request.token(), request.newPassword());
+        return ResponseEntity.ok(ApiResponse.success("Password has been reset. Please sign in."));
+    }
+
+    @PostMapping("/change-password")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ApiResponse<Void>> changePassword(
+            @Valid @RequestBody ChangePasswordRequest request,
+            @AuthenticationPrincipal UserPrincipal principal) {
+        passwordManagementService.changeOwnPassword(
+                principal, request.currentPassword(), request.newPassword());
+        return ResponseEntity.ok(ApiResponse.success("Password changed. Please sign in again."));
     }
 
     @PostMapping("/signup")
